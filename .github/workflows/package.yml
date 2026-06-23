@@ -1,0 +1,109 @@
+name: Package Roma
+
+on:
+  workflow_dispatch:
+
+jobs:
+  package-all:
+    runs-on: macos-latest
+
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+        submodules: recursive
+
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v4
+      with:
+        dotnet-version: '10.0.x'
+
+    - name: Restore dependencies (Windows x64)
+      run: dotnet restore -p:Configuration=Release -r win-x64 --force-evaluate
+      working-directory: ./src/Roma.Host
+
+    - name: Publish (Windows x64)
+      run: dotnet publish -r win-x64 -c Release
+      working-directory: ./src/Roma.Host
+
+    - name: Archive artifacts (Windows x64)
+      uses: actions/upload-artifact@v4
+      with:
+        name: Roma-windows-x64
+        path: src/Roma.Host/bin/Release/net10.0-desktop/win-x64/publish
+
+    - name: Restore dependencies (Windows ARM64)
+      run: dotnet restore -p:Configuration=Release -r win-arm64 --force-evaluate
+      working-directory: ./src/Roma.Host
+
+    - name: Publish (Windows ARM64)
+      run: dotnet publish -r win-arm64 -c Release
+      working-directory: ./src/Roma.Host
+
+    - name: Archive artifacts (Windows ARM64)
+      uses: actions/upload-artifact@v4
+      with:
+        name: Roma-windows-arm64
+        path: src/Roma.Host/bin/Release/net10.0-desktop/win-arm64/publish
+
+    - name: Restore dependencies (macOS x64)
+      run: dotnet restore -r osx-x64 --force-evaluate
+      working-directory: ./src/Roma.Host
+
+    - name: Publish (macOS x64)
+      run: dotnet publish -r osx-x64 -c Release
+      working-directory: ./src/Roma.Host
+
+    - name: Restore dependencies (macOS ARM64)
+      run: dotnet restore -r osx-arm64 --force-evaluate
+      working-directory: ./src/Roma.Host
+
+    - name: Publish (macOS ARM64)
+      run: dotnet publish -r osx-arm64 -c Release
+      working-directory: ./src/Roma.Host
+
+    - name: Build .app bundle (macOS universal)
+      run: build/macos/build-application-bundle.sh osx-universal
+
+    - name: Build .dmg package (macOS universal)
+      run: build/macos/build-dmg.sh Roma.app Roma-macos-universal.dmg
+
+    - name: Upload artifacts (.dmg, macOS universal)
+      uses: actions/upload-artifact@v4
+      with:
+        name: Roma-macos-universal-dmg
+        path: Roma-macos-universal.dmg
+
+    - name: Restore dependencies (Linux x64)
+      run: dotnet restore -r linux-x64 --force-evaluate
+      working-directory: ./src/Roma.Host
+
+    - name: Publish (Linux x64)
+      run: dotnet publish -r linux-x64 -c Release
+      working-directory: ./src/Roma.Host
+
+    - name: Archive artifacts (Linux x64)
+      run: tar -czpf Roma-linux-x64.tar.gz -C ./src/Roma.Host/bin/Release/net10.0-desktop/linux-x64/publish .
+
+    - name: Upload artifacts (Linux x64)
+      uses: actions/upload-artifact@v4
+      with:
+        name: Roma-linux-x64
+        path: Roma-linux-x64.tar.gz
+
+    - name: Restore dependencies (Linux ARM64)
+      run: dotnet restore -r linux-arm64 --force-evaluate
+      working-directory: ./src/Roma.Host
+
+    - name: Publish (Linux ARM64)
+      run: dotnet publish -r linux-arm64 -c Release
+      working-directory: ./src/Roma.Host
+
+    - name: Archive artifacts (Linux ARM64)
+      run: tar -czpf Roma-linux-arm64.tar.gz -C ./src/Roma.Host/bin/Release/net10.0-desktop/linux-arm64/publish .
+
+    - name: Upload artifacts (Linux ARM64)
+      uses: actions/upload-artifact@v4
+      with:
+        name: Roma-linux-arm64
+        path: Roma-linux-arm64.tar.gz
