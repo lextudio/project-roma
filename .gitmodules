@@ -1,3 +1,7 @@
 [submodule "ext/ilspy"]
 	path = ext/ilspy
 	url = https://github.com/icsharpcode/ILSpy.git
+[submodule "ext/tomstoolbox2"]
+	path = ext/tomstoolbox2
+	url = https://github.com/lextudio/TomsToolbox2.git
+	branch = uno
