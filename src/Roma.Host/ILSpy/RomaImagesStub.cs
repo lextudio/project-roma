@@ -41,10 +41,21 @@ namespace ICSharpCode.ILSpy
                 return img;
 
             var uri = (IsDark ? EnsureDarkVariant(file) : null)
-                ?? new Uri($"ms-appx:///ILSpyIcons/{file}");
+                ?? LightSvgUri(file);
             img = new SvgImageSource(uri);
             _cache[key] = img;
             return img;
+        }
+
+        // Construct a URI for the light SVG using the real filesystem path.
+        // ms-appx:/// resolution on macOS .app bundles may use Contents/Resources/
+        // (NSBundle convention) rather than Contents/MacOS/ where the SVGs live.
+        private static Uri LightSvgUri(string file)
+        {
+            var path = System.IO.Path.Combine(AppContext.BaseDirectory, "ILSpyIcons", file);
+            if (System.IO.File.Exists(path))
+                return new Uri(path);
+            return new Uri($"ms-appx:///ILSpyIcons/{file}");
         }
 
         // Recolor the light SVG and cache it in LocalFolder/roma-dark-icons/, returning an ms-appdata
