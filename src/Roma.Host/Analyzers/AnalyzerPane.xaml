@@ -1,0 +1,8 @@
+<UserControl
+    x:Class="Roma.Host.Analyzers.AnalyzerPane"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid>
+    <ContentPresenter x:Name="_treeHost" />
+  </Grid>
+</UserControl>

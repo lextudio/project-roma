@@ -1,0 +1,309 @@
+<Project Sdk="Uno.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0-desktop</TargetFramework>
+
+    <OutputType>Exe</OutputType>
+    <UnoSingleProject>true</UnoSingleProject>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- ROMA_UNO guards small, behavior-preserving tweaks in linked upstream ILSpy
+         files for the Uno/WinUI nullable+alias environment (e.g. return null → return default
+         where T is constrained to a class via a global alias the analyzer can't see). -->
+    <DefineConstants>$(DefineConstants);ROMA_UNO</DefineConstants>
+
+    <!-- Display name -->
+    <ApplicationTitle>Roma</ApplicationTitle>
+    <!-- App Identifier -->
+    <ApplicationId>com.lextudio.roma</ApplicationId>
+    <!-- Versions -->
+    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+    <!-- Package Publisher -->
+    <ApplicationPublisher>LeXtudio</ApplicationPublisher>
+    <!-- Package Description -->
+    <Description>Roma bootstrap host for ILSpy on Uno Platform.</Description>
+
+    <!--
+      UnoFeatures are used to quickly add and manage features enabled for your app.
+      https://aka.platform.uno/singleproject-features
+    -->
+    <UnoFeatures>
+      SkiaRenderer;
+      Svg;
+    </UnoFeatures>
+    <UseNuGetPackages>false</UseNuGetPackages>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\ext\ilspy\ICSharpCode.Decompiler\ICSharpCode.Decompiler.csproj" />
+    <ProjectReference Include="..\..\ext\ilspy\ICSharpCode.ILSpyX\ICSharpCode.ILSpyX.csproj" />
+    <ProjectReference Include="..\..\..\TomsToolbox2\src\TomsToolbox.Wpf.Uno\TomsToolbox.Wpf.Uno.csproj" />
+    <ProjectReference Include="..\..\..\TomsToolbox2\src\TomsToolbox.Composition\TomsToolbox.Composition.csproj" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseNuGetPackages)' == 'true'">
+    <PackageReference Include="LeXtudio.UnoEdit" />
+    <PackageReference Include="LeXtudio.Windows" />
+    <PackageReference Include="LeXtudio.RichText" />
+    <PackageReference Include="LeXtudio.UnoDock" />
+    <PackageReference Include="LeXtudio.UnoDock.Themes.VS2013" />
+    <PackageReference Include="LeXtudio.DevFlow.Agent.Uno" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(UseNuGetPackages)' != 'true'">
+    <ProjectReference Include="..\..\..\UnoEdit\src\UnoEdit\UnoEdit.csproj" />
+    <ProjectReference Include="..\..\..\UnoRichText\src\LeXtudio.RichText\LeXtudio.RichText.csproj" />
+    <ProjectReference Include="..\..\..\WindowsShims\src\LeXtudio.Windows\LeXtudio.Windows.csproj" />
+    <ProjectReference Include="..\..\..\UnoDock\src\UnoDock\UnoDock.csproj" />
+    <ProjectReference Include="..\..\..\UnoDock\src\UnoDock.Themes.VS2013\UnoDock.Themes.VS2013.csproj" />
+    <ProjectReference Include="..\..\..\wpf-labs\src\DevFlow\LeXtudio.DevFlow.Agent.Uno\LeXtudio.DevFlow.Agent.Uno.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="CommunityToolkit.WinUI.Controls.Primitives" />
+    <PackageReference Include="McMaster.Extensions.CommandLineUtils" />
+    <!-- System.Composition.AttributedModel: ExportAttribute + MetadataAttribute used by
+         ExportContextMenuEntryAttribute in ContextMenuEntry.cs. Version aligned with ILSpyX. -->
+    <PackageReference Include="System.Composition.AttributedModel" />
+    <PackageReference Include="Tmds.DBus.Protocol" />
+  </ItemGroup>
+
+  <!-- ILSpy icon SVGs live in ILSpyIcons/ (outside Assets/) so Resizetizer never
+       touches them. Included as plain Content so they reach the output as raw SVGs
+       that SvgImageSource can load via ms-appx:///ILSpyIcons/xxx.svg. -->
+  <ItemGroup>
+    <Content Include="ILSpyIcons\*.svg" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <!-- ILSpy localized strings: embed the real resx + link the Designer.cs so
+       Resources.ResourceManager.GetString() resolves all DecompilerSettings labels. -->
+  <ItemGroup>
+    <EmbeddedResource Include="..\..\ext\ilspy\ILSpy\Properties\Resources.resx"
+                      LogicalName="ICSharpCode.ILSpy.Properties.Resources.resources" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Properties\Resources.Designer.cs"
+             Link="ILSpy\Properties\Resources.Designer.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Compile Include="..\..\ext\ilspy\ILSpy\SessionSettings.cs" Link="ILSpy\SessionSettings.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\LanguageSettings.cs" Link="ILSpy\LanguageSettings.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Util\SettingsService.cs" Link="ILSpy\Util\SettingsService.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Languages\LanguageService.cs" Link="ILSpy\Languages\LanguageService.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Languages\CSharpLanguage.cs" Link="ILSpy\Languages\CSharpLanguage.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Languages\CSharpHighlightingTokenWriter.cs" Link="ILSpy\Languages\CSharpHighlightingTokenWriter.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Languages\CSharpBracketSearcher.cs" Link="ILSpy\Languages\CSharpBracketSearcher.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\MainWindowViewModel.cs" Link="ILSpy\MainWindowViewModel.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Languages\Language.cs" Link="ILSpy\Languages\Language.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\DecompilationOptions.cs" Link="ILSpy\DecompilationOptions.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Languages\IResourceFileHandler.cs" Link="ILSpy\Languages\IResourceFileHandler.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TextView\IBracketSearcher.cs" Link="ILSpy\TextView\IBracketSearcher.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TextView\BracketSearchResult.cs" Link="ILSpy\TextView\BracketSearchResult.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TextView\DefaultBracketSearcher.cs" Link="ILSpy\TextView\DefaultBracketSearcher.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TextView\ViewState.cs" Link="ILSpy\TextView\ViewState.cs" />
+    <!-- AppEnv: fully portable, zero WPF deps -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\AppEnv\AppEnvironment.cs" Link="ILSpy\AppEnv\AppEnvironment.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\AppEnv\CommandLineArguments.cs" Link="ILSpy\AppEnv\CommandLineArguments.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\AppEnv\CommandLineTools.cs" Link="ILSpy\AppEnv\CommandLineTools.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\AppEnv\SingleInstance.cs" Link="ILSpy\AppEnv\SingleInstance.cs" />
+    <!-- TreeNodes: 27 cross-platform files -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\AssemblyListTreeNode.cs" Link="ILSpy\TreeNodes\AssemblyListTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\AssemblyReferenceReferencedTypesTreeNode.cs" Link="ILSpy\TreeNodes\AssemblyReferenceReferencedTypesTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\AssemblyReferenceTreeNode.cs" Link="ILSpy\TreeNodes\AssemblyReferenceTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\AssemblyTreeNode.cs" Link="ILSpy\TreeNodes\AssemblyTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\BaseTypesEntryNode.cs" Link="ILSpy\TreeNodes\BaseTypesEntryNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\BaseTypesTreeNode.cs" Link="ILSpy\TreeNodes\BaseTypesTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\DerivedTypesEntryNode.cs" Link="ILSpy\TreeNodes\DerivedTypesEntryNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\DerivedTypesTreeNode.cs" Link="ILSpy\TreeNodes\DerivedTypesTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\EventTreeNode.cs" Link="ILSpy\TreeNodes\EventTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\ExportedTypeTreeNode.cs" Link="ILSpy\TreeNodes\ExportedTypeTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\ExtensionTreeNode.cs" Link="ILSpy\TreeNodes\ExtensionTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\FieldTreeNode.cs" Link="ILSpy\TreeNodes\FieldTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\FilterResult.cs" Link="ILSpy\TreeNodes\FilterResult.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\ILSpyTreeNode.cs" Link="ILSpy\TreeNodes\ILSpyTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\IMemberTreeNode.cs" Link="ILSpy\TreeNodes\IMemberTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\MemberReferenceTreeNode.cs" Link="ILSpy\TreeNodes\MemberReferenceTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\MethodTreeNode.cs" Link="ILSpy\TreeNodes\MethodTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\ModuleReferenceTreeNode.cs" Link="ILSpy\TreeNodes\ModuleReferenceTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\NamespaceTreeNode.cs" Link="ILSpy\TreeNodes\NamespaceTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\NaturalStringComparer.cs" Link="ILSpy\TreeNodes\NaturalStringComparer.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\PackageFolderTreeNode.cs" Link="ILSpy\TreeNodes\PackageFolderTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\PropertyTreeNode.cs" Link="ILSpy\TreeNodes\PropertyTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\ReferenceFolderTreeNode.cs" Link="ILSpy\TreeNodes\ReferenceFolderTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\ResourceListTreeNode.cs" Link="ILSpy\TreeNodes\ResourceListTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\ThreadingSupport.cs" Link="ILSpy\TreeNodes\ThreadingSupport.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\TypeReferenceTreeNode.cs" Link="ILSpy\TreeNodes\TypeReferenceTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\TypeTreeNode.cs" Link="ILSpy\TreeNodes\TypeTreeNode.cs" />
+    <!-- Icon enums and factory interface: zero deps, link directly -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Images\AccessOverlayIcon.cs" Link="ILSpy\Images\AccessOverlayIcon.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Images\TypeIcon.cs" Link="ILSpy\Images\TypeIcon.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Images\MemberIcon.cs" Link="ILSpy\Images\MemberIcon.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\ISmartTextOutput.cs" Link="ILSpy\ISmartTextOutput.cs" />
+    <!-- SmartTextOutputExtensions.AddButton: real upstream file linked directly; the WinUI
+         button + SVG-icon construction is guarded by #if ROMA_UNO (replaces the old Roma stub). -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\SmartTextOutputExtensions.cs" Link="ILSpy\SmartTextOutputExtensions.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Util\GlobalUtils.cs" Link="ILSpy\Util\GlobalUtils.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Util\ShellHelper.cs" Link="ILSpy\Util\ShellHelper.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\ResourceNodes\IResourceNodeFactory.cs" Link="ILSpy\TreeNodes\ResourceNodes\IResourceNodeFactory.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\ResourceNodes\ResourceTreeNode.cs" Link="ILSpy\TreeNodes\ResourceNodes\ResourceTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\ResourceNodes\ResourceEntryNode.cs" Link="ILSpy\TreeNodes\ResourceNodes\ResourceEntryNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\ResourceNodes\ResourcesFileTreeNode.cs" Link="ILSpy\TreeNodes\ResourceNodes\ResourcesFileTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Controls\TreeView\WpfWindowsDataObject.cs" Link="ILSpy\Controls\TreeView\WpfWindowsDataObject.cs" />
+    <!-- ExtensionMethods: SelectArray, GetTypeSystemWithCurrentOptionsOrNull, DPI transforms, visual-tree helpers.
+         3 'return null' → 'return default' tweaks guarded by ROMA_UNO (nullable+alias on T : DependencyObject). -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\ExtensionMethods.cs" Link="ILSpy\ExtensionMethods.cs" />
+    <!-- TextView: AvalonEditTextOutput links cleanly (all AvalonEdit deps live in UnoEdit). -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\TextView\AvalonEditTextOutput.cs" Link="ILSpy\TextView\AvalonEditTextOutput.cs" />
+    <!-- Session 27: AvalonEdit text-marker interfaces (no drawing) link cleanly. -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\AvalonEdit\ITextMarker.cs" Link="ILSpy\AvalonEdit\ITextMarker.cs" />
+    <!-- DecompilerTextView foundation: DecompilerTextEditor (: TextEditor, aliased to UnoEdit's
+         editor in GlobalUsings) + ThemeAwareHighlightingColorizer (: UnoEdit HighlightingColorizer)
+         + the visual-line generators (: UnoEdit VisualLineElementGenerator). -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\TextView\ThemeAwareHighlightingColorizer.cs" Link="ILSpy\TextView\ThemeAwareHighlightingColorizer.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TextView\DecompilerTextEditor.cs" Link="ILSpy\TextView\DecompilerTextEditor.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TextView\ReferenceElementGenerator.cs" Link="ILSpy\TextView\ReferenceElementGenerator.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TextView\UIElementGenerator.cs" Link="ILSpy\TextView\UIElementGenerator.cs" />
+    <!-- VisualLineReferenceText: reference-link visual element. .wpf.cs (OnQueryCursor) is
+         WPF-only cursor handling — main .cs only. -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\TextView\VisualLineReferenceText.cs" Link="ILSpy\TextView\VisualLineReferenceText.cs" />
+    <!-- The real DecompilerTextView + its documentation/tooltip builder. InitializeComponent +
+         the named elements (textEditor/waitAdorner/progressBar/...) are code-built in
+         RomaDecompilerTextViewInit.cs; WPF-only clipboard/adorner/animation bits are guarded. -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Themes\ResourceKeys.cs" Link="ILSpy\Themes\ResourceKeys.cs" />
+    <!-- SyntaxColor: per-theme syntax color entry (Foreground/Background/FontWeight/FontStyle ->
+         HighlightingColor). Portable as-is via the WindowsShims aliases. Drives the per-theme
+         palette loaded by ThemeManager.UpdateTheme so the 6 themes get distinct syntax colors. -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Themes\SyntaxColor.cs" Link="ILSpy\Themes\SyntaxColor.cs" />
+    <!-- Real ILSpy ThemeManager (replaces the former local stub): loads per-theme SyntaxColor
+         palettes so all 6 themes get distinct syntax colors. WPF Button/Style helpers are
+         #if'd out and the theme-XAML loading uses an ms-appx Uno path (ROMA_UNO branches). -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Themes\ThemeManager.cs" Link="ILSpy\Themes\ThemeManager.cs" />
+  </ItemGroup>
+
+  <!-- Uno theme palette dictionaries, loaded by ThemeManager.UpdateTheme via ms-appx. -->
+  <ItemGroup>
+    <Page Include="Themes\Theme.Light.uno.xaml" />
+    <Page Include="Themes\Theme.Dark.uno.xaml" />
+    <Page Include="Themes\Theme.VSCodeLightPlus.uno.xaml" />
+    <Page Include="Themes\Theme.VSCodeDarkPlus.uno.xaml" />
+    <Page Include="Themes\Theme.RSharpLight.uno.xaml" />
+    <Page Include="Themes\Theme.RSharpDark.uno.xaml" />
+    <!-- TaskHelper: Then/Catch/HandleExceptions task extensions used by DecompilerTextView +
+         AssemblyTreeModel (replaces the earlier Roma-local TomsToolbox.Essentials shim). -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\TaskHelper.cs" Link="ILSpy\TaskHelper.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TextView\DocumentationUIBuilder.cs" Link="ILSpy\TextView\DocumentationUIBuilder.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TextView\DecompilerTextView.cs" Link="ILSpy\TextView\DecompilerTextView.cs" />
+    <!-- TextMarkerService.cs + BracketHighlightRenderer.cs draw with the WPF Media surface
+         (StreamGeometry/Pen.Freeze/DashStyles/Rect corners/object-returning geometry builder)
+         which UnoEdit doesn't yet match. MOCKED in RomaTextRenderersMock.cs (no paint) until the
+         drawing parity lands; then delete the mock and re-enable these. See docs/session27.md.
+    <Compile Include="..\..\ext\ilspy\ILSpy\AvalonEdit\TextMarkerService.cs" Link="ILSpy\AvalonEdit\TextMarkerService.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TextView\BracketHighlightRenderer.cs" Link="ILSpy\TextView\BracketHighlightRenderer.cs" />
+    -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\TextView\OutputLengthExceededException.cs" Link="ILSpy\TextView\OutputLengthExceededException.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\GuessFileType.cs" Link="ILSpy\GuessFileType.cs" />
+    <!-- MessageBus: real generic bus + event-arg wrappers (WeakEventSource from TomsToolbox) -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Util\MessageBus.cs" Link="ILSpy\Util\MessageBus.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Util\GlobalUtils.wpf.cs" Link="ILSpy\Util\GlobalUtils.wpf.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\EntityReference.cs" Link="ILSpy\EntityReference.cs" />
+    <!-- ViewModels: PaneModel chain (WPF path, no CROSS_PLATFORM) -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\ViewModels\PaneModel.cs" Link="ILSpy\ViewModels\PaneModel.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\ViewModels\ToolPaneModel.cs" Link="ILSpy\ViewModels\ToolPaneModel.cs" />
+    <!-- TabPageModelExtensions: ShowTextView + CreateDecompilationOptions (real source) -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\ViewModels\TabPageModelExtensions.cs" Link="ILSpy\ViewModels\TabPageModelExtensions.cs" />
+    <!-- TabPageModel.cs: real source. [NonShared] resolves via the RomaMefStubs attribute.
+         Non-CROSS_PLATFORM path → : PaneModel. Defines IHaveState (stub removed). -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\ViewModels\TabPageModel.cs" Link="ILSpy\ViewModels\TabPageModel.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\ViewModels\Pane.cs" Link="ILSpy\ViewModels\Pane.cs" />
+    <!-- Session 26: full port of the assembly-tree model + docking + navigation.
+         DecompilerTextView stays a Roma bridge (out of scope); DockWorkspace.wpf.cs
+         (AvalonDock DockingManager binding glue) is replaced by a Roma partial. -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\ExportCommandAttribute.cs" Link="ILSpy\Commands\ExportCommandAttribute.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\IProtocolHandler.cs" Link="ILSpy\Commands\IProtocolHandler.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Updates\UpdateSettings.cs" Link="ILSpy\Updates\UpdateSettings.cs" />
+    <!-- Pure (non-WPF) update infrastructure ported as-is; the UI surfaces (About page, update
+         banner) are Roma-native. -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Updates\AppUpdateService.cs" Link="ILSpy\Updates\AppUpdateService.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Updates\AvailableVersionInfo.cs" Link="ILSpy\Updates\AvailableVersionInfo.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Updates\UpdateService.cs" Link="ILSpy\Updates\UpdateService.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\NavigationHistory.cs" Link="ILSpy\NavigationHistory.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\NavigationState.cs" Link="ILSpy\NavigationState.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Docking\DockWorkspace.cs" Link="ILSpy\Docking\DockWorkspace.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Docking\DockLayoutSettings.cs" Link="ILSpy\Docking\DockLayoutSettings.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\AssemblyTree\AssemblyTreeModel.cs" Link="ILSpy\AssemblyTree\AssemblyTreeModel.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\AssemblyTree\AssemblyTreeModel.wpf.cs" Link="ILSpy\AssemblyTree\AssemblyTreeModel.wpf.cs" />
+    <!-- Metadata pane — DataGrid-backed View() chain.
+         Helpers.cs + Helper.wpf.cs: PrepareDataGrid factory (ROMA_UNO guards on WPF-only imports).
+         MetaDataGrid.cs: DataGrid subclass with hover tooltip + IHaveState.
+         MetadataTreeNode.cs: root node — View() sets title; Decompile() dumps real metadata info. -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\Helpers.cs" Link="ILSpy\Metadata\Helpers.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\Helper.wpf.cs" Link="ILSpy\Metadata\Helper.wpf.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\MetaDataGrid.cs" Link="ILSpy\Metadata\MetaDataGrid.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\MetadataTreeNode.cs" Link="ILSpy\Metadata\MetadataTreeNode.cs" />
+    <!-- Metadata base node classes: table/heap base + view scaffolding.
+         MetadataTableTreeNode.wpf.cs: partial ScrollRowIntoView — WPF Dispatcher.BeginInvoke + FindVisualChild.
+         PE-header nodes: DosHeader, CoffHeader, OptionalHeader, DataDirectories, DebugDirectory. -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\MetadataTableTreeNode.cs" Link="ILSpy\Metadata\MetadataTableTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\MetadataTableTreeNode.wpf.cs" Link="ILSpy\Metadata\MetadataTableTreeNode.wpf.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\MetadataHeapTreeNode.cs" Link="ILSpy\Metadata\MetadataHeapTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\MetadataTablesTreeNode.cs" Link="ILSpy\Metadata\MetadataTablesTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\DebugMetadataTablesTreeNode.cs" Link="ILSpy\Metadata\DebugMetadataTablesTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\DosHeaderTreeNode.cs" Link="ILSpy\Metadata\DosHeaderTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\CoffHeaderTreeNode.cs" Link="ILSpy\Metadata\CoffHeaderTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\OptionalHeaderTreeNode.cs" Link="ILSpy\Metadata\OptionalHeaderTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\DataDirectoriesTreeNode.cs" Link="ILSpy\Metadata\DataDirectoriesTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\DebugDirectoryTreeNode.cs" Link="ILSpy\Metadata\DebugDirectoryTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\DebugDirectory\*.cs" Link="ILSpy\Metadata\DebugDirectory\%(Filename)%(Extension)" />
+    <!-- FlagsTooltip: tooltip data model (pure C# IEnumerable<FlagGroup>).
+         InitializeComponent() guarded by #if !ROMA_UNO — no XAML linked on Uno. -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\FlagsTooltip.xaml.cs" Link="ILSpy\Metadata\FlagsTooltip.xaml.cs" />
+    <!-- FlagsContentFilter: IContentFilter impl for flags DataGrid columns. -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\FlagsContentFilter.cs" Link="ILSpy\Metadata\FlagsContentFilter.cs" />
+    <!-- CorTables: all per-table leaf nodes (Module, TypeRef, TypeDef, ...). -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\CorTables\*.cs" Link="ILSpy\Metadata\CorTables\%(Filename)%(Extension)" />
+    <!-- Heaps: String, UserString, GUID, Blob heap tree nodes. -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\Heaps\*.cs" Link="ILSpy\Metadata\Heaps\%(Filename)%(Extension)" />
+    <!-- DebugTables: PDB/portable-PDB debug metadata table nodes. -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\DebugTables\*.cs" Link="ILSpy\Metadata\DebugTables\%(Filename)%(Extension)" />
+    <!-- ContextMenuEntry: IContextMenuEntry, TextViewContext, ExportContextMenuEntryAttribute,
+         ContextMenuProvider. Requires System.Composition.AttributedModel + GetExportProvider
+         (TomsToolbox.Wpf.Uno) + SharpTreeView/DecompilerTextView : Control (stubs updated). -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\ContextMenuEntry.cs" Link="ILSpy\ContextMenuEntry.cs" />
+    <!-- Commands: cross-platform IContextMenuEntry implementations (no WPF Clipboard/UI deps
+         except System.Windows.Clipboard which is shimmed in WindowsShims). -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\CopyFullyQualifiedNameContextMenuEntry.cs" Link="ILSpy\Commands\CopyFullyQualifiedNameContextMenuEntry.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\SearchMsdnContextMenuEntry.cs" Link="ILSpy\Commands\SearchMsdnContextMenuEntry.cs" />
+    <!-- Assembly-node context entries reachable from the tree menu. Each constructs from services
+         the Roma export provider supplies (AssemblyTreeModel / DockWorkspace / LanguageService) and
+         relies on the WindowsShims Microsoft.Win32 dialog + System.Windows.MessageBox shims. -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\SimpleCommand.cs" Link="ILSpy\Commands\SimpleCommand.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\DecompileInNewViewCommand.cs" Link="ILSpy\Commands\DecompileInNewViewCommand.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\SolutionWriter.cs" Link="ILSpy\SolutionWriter.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\SaveCodeContextMenuEntry.cs" Link="ILSpy\Commands\SaveCodeContextMenuEntry.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\GeneratePdbContextMenuEntry.cs" Link="ILSpy\Commands\GeneratePdbContextMenuEntry.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\CreateDiagramContextMenuEntry.cs" Link="ILSpy\Commands\CreateDiagramContextMenuEntry.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\SelectPdbContextMenuEntry.cs" Link="ILSpy\Commands\SelectPdbContextMenuEntry.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Util\ResourceHelper.cs" Link="ILSpy\Util\ResourceHelper.cs" />
+    <!-- Analyzers: tree nodes -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Analyzers\AnalyzerTreeNode.cs" Link="ILSpy\Analyzers\AnalyzerTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Analyzers\AnalyzerRootNode.cs" Link="ILSpy\Analyzers\AnalyzerRootNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Analyzers\AnalyzerEntityTreeNode.cs" Link="ILSpy\Analyzers\AnalyzerEntityTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Analyzers\AnalyzerSearchTreeNode.cs" Link="ILSpy\Analyzers\AnalyzerSearchTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Analyzers\TreeNodes\AnalyzedTypeTreeNode.cs" Link="ILSpy\Analyzers\TreeNodes\AnalyzedTypeTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Analyzers\TreeNodes\AnalyzedMethodTreeNode.cs" Link="ILSpy\Analyzers\TreeNodes\AnalyzedMethodTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Analyzers\TreeNodes\AnalyzedPropertyTreeNode.cs" Link="ILSpy\Analyzers\TreeNodes\AnalyzedPropertyTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Analyzers\TreeNodes\AnalyzedFieldTreeNode.cs" Link="ILSpy\Analyzers\TreeNodes\AnalyzedFieldTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Analyzers\TreeNodes\AnalyzedEventTreeNode.cs" Link="ILSpy\Analyzers\TreeNodes\AnalyzedEventTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Analyzers\TreeNodes\AnalyzedAccessorTreeNode.cs" Link="ILSpy\Analyzers\TreeNodes\AnalyzedAccessorTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Analyzers\TreeNodes\AnalyzedModuleTreeNode.cs" Link="ILSpy\Analyzers\TreeNodes\AnalyzedModuleTreeNode.cs" />
+    <!-- Options panels -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Options\IOptionPage.cs" Link="ILSpy\Options\IOptionPage.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Options\IOptionsMetadata.cs" Link="ILSpy\Options\IOptionsMetadata.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Options\ExportOptionPageAttribute.cs" Link="ILSpy\Options\ExportOptionPageAttribute.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Options\DisplaySettings.cs" Link="ILSpy\Options\DisplaySettings.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Options\DisplaySettingsViewModel.cs" Link="ILSpy\Options\DisplaySettingsViewModel.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Options\DecompilerSettingsViewModel.cs" Link="ILSpy\Options\DecompilerSettingsViewModel.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Options\MiscSettings.cs" Link="ILSpy\Options\MiscSettings.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Options\MiscSettingsViewModel.cs" Link="ILSpy\Options\MiscSettingsViewModel.cs" />
+  </ItemGroup>
+
+</Project>

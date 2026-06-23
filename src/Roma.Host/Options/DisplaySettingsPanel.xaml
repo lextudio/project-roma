@@ -1,0 +1,126 @@
+<UserControl
+    x:Class="Roma.Host.Options.DisplaySettingsPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <ScrollViewer VerticalScrollBarVisibility="Auto">
+    <StackPanel Margin="4" Spacing="4">
+
+      <!-- Theme -->
+      <StackPanel Orientation="Horizontal" Spacing="8" Margin="0,0,0,8">
+        <TextBlock Text="Theme:" VerticalAlignment="Center" />
+        <ComboBox x:Name="_themeCombo" SelectionChanged="OnThemeSelectionChanged" MinWidth="120">
+          <ComboBoxItem Content="System" />
+          <ComboBoxItem Content="Light" />
+          <ComboBoxItem Content="Dark" />
+        </ComboBox>
+      </StackPanel>
+
+      <!-- Font -->
+      <TextBlock Text="Font" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,4,0,4"/>
+      <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+              BorderThickness="1" CornerRadius="4" Padding="12,8">
+        <StackPanel Spacing="8">
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Font:" VerticalAlignment="Center" Width="40" />
+            <ComboBox ItemsSource="{Binding FontFamilies}"
+                      SelectedItem="{Binding Settings.SelectedFontName, Mode=TwoWay}"
+                      MinWidth="180" VerticalContentAlignment="Center" />
+            <TextBlock Text="Size:" VerticalAlignment="Center" Margin="8,0,0,0" />
+            <ComboBox x:Name="_fontSizeCombo"
+                      ItemsSource="{Binding FontSizes}"
+                      SelectedItem="{Binding Settings.SelectedFontSize, Mode=TwoWay}"
+                      IsEditable="False"
+                      MinWidth="70" VerticalContentAlignment="Center" />
+          </StackPanel>
+          <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+                  BorderThickness="1" CornerRadius="2" Padding="8,6" MinHeight="40">
+            <TextBlock Text="AaBbCcXxYyZz"
+                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                       FontFamily="{Binding Settings.SelectedFontName}"
+                       FontSize="{Binding Settings.SelectedFontSize}" />
+          </Border>
+        </StackPanel>
+      </Border>
+
+      <!-- Indentation -->
+      <TextBlock Text="Indentation" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,8,0,4"/>
+      <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+              BorderThickness="1" CornerRadius="4" Padding="12,8">
+        <StackPanel Spacing="6">
+          <CheckBox Content="Use tabs instead of spaces"
+                    x:Name="_useTabsChk"
+                    IsChecked="{Binding Settings.IndentationUseTabs, Mode=TwoWay}"
+                    Checked="OnUseTabsChanged" Unchecked="OnUseTabsChanged" />
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Tab size:" VerticalAlignment="Center" Width="80"/>
+            <TextBox Width="60" InputScope="Number"
+                     Text="{Binding Settings.IndentationTabSize, Mode=TwoWay}" />
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Spacing="8">
+            <TextBlock Text="Indent size:" VerticalAlignment="Center" Width="80"/>
+            <TextBox Width="60" InputScope="Number"
+                     Text="{Binding Settings.IndentationSize, Mode=TwoWay}" />
+          </StackPanel>
+        </StackPanel>
+      </Border>
+
+      <!-- Decompilation view options -->
+      <TextBlock Text="Decompilation view options" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,8,0,4"/>
+      <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+              BorderThickness="1" CornerRadius="4" Padding="12,8">
+        <StackPanel Spacing="6">
+          <CheckBox Content="Show line numbers"
+                    IsChecked="{Binding Settings.ShowLineNumbers, Mode=TwoWay}" />
+          <CheckBox Content="Enable word wrap"
+                    IsChecked="{Binding Settings.EnableWordWrap, Mode=TwoWay}" />
+          <CheckBox Content="Enable folding on all blocks in braces"
+                    IsChecked="{Binding Settings.FoldBraces, Mode=TwoWay}" />
+          <CheckBox Content="Highlight matching braces"
+                    IsChecked="{Binding Settings.HighlightMatchingBraces, Mode=TwoWay}" />
+          <CheckBox Content="Highlight current line"
+                    IsChecked="{Binding Settings.HighlightCurrentLine, Mode=TwoWay}" />
+          <CheckBox Content="Expand member definitions after decompilation"
+                    IsChecked="{Binding Settings.ExpandMemberDefinitions, Mode=TwoWay}" />
+          <CheckBox Content="Expand using declarations after decompilation"
+                    IsChecked="{Binding Settings.ExpandUsingDeclarations, Mode=TwoWay}" />
+          <CheckBox Content="Show info from debug symbols, if available"
+                    IsChecked="{Binding Settings.ShowDebugInfo, Mode=TwoWay}" />
+          <CheckBox Content="Show raw offsets and bytes before each instruction"
+                    IsChecked="{Binding Settings.ShowRawOffsetsAndBytesBeforeInstruction, Mode=TwoWay}" />
+          <CheckBox Content="Decode custom attribute blobs"
+                    IsChecked="{Binding Settings.DecodeCustomAttributeBlobs, Mode=TwoWay}" />
+        </StackPanel>
+      </Border>
+
+      <!-- Tree view options -->
+      <TextBlock Text="Tree view options" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,8,0,4"/>
+      <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+              BorderThickness="1" CornerRadius="4" Padding="12,8">
+        <StackPanel Spacing="6">
+          <CheckBox Content="Show metadata tokens"
+                    IsChecked="{Binding Settings.ShowMetadataTokens, Mode=TwoWay}" />
+          <CheckBox Content="Show metadata tokens in base 10"
+                    IsChecked="{Binding Settings.ShowMetadataTokensInBase10, Mode=TwoWay}" />
+          <CheckBox Content="Hide empty metadata tables from tree view"
+                    IsChecked="{Binding Settings.HideEmptyMetadataTables, Mode=TwoWay}" />
+          <CheckBox Content="Use nested namespace structure"
+                    IsChecked="{Binding Settings.UseNestedNamespaceNodes, Mode=TwoWay}" />
+        </StackPanel>
+      </Border>
+
+      <!-- Other options -->
+      <TextBlock Text="Other options" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,8,0,4"/>
+      <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+              BorderThickness="1" CornerRadius="4" Padding="12,8" Margin="0,0,0,8">
+        <StackPanel Spacing="6">
+          <CheckBox Content="Sort results by fitness"
+                    IsChecked="{Binding Settings.SortResults, Mode=TwoWay}" />
+          <CheckBox Content="Enable smooth scrolling"
+                    IsChecked="{Binding Settings.EnableSmoothScrolling, Mode=TwoWay}" />
+        </StackPanel>
+      </Border>
+
+    </StackPanel>
+  </ScrollViewer>
+</UserControl>

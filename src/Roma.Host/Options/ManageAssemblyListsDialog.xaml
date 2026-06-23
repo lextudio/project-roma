@@ -1,0 +1,57 @@
+<ContentDialog
+    x:Class="Roma.Host.Options.ManageAssemblyListsDialog"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    Title="Manage Assembly Lists"
+    CloseButtonText="Close">
+
+  <ContentDialog.Resources>
+    <x:Double x:Key="ContentDialogMaxWidth">760</x:Double>
+    <x:Double x:Key="ContentDialogMinWidth">520</x:Double>
+  </ContentDialog.Resources>
+
+  <!-- Mirrors ILSpy's ManageAssemblyListsDialog: list of lists on the left; New/Clone/Rename/Delete/
+       Reset down the right; "Add Preconfigured List" along the bottom; Close is the dialog button.
+       No Open button — double-click or Enter activates the selected list. New/Clone/Rename prompt for
+       the name via a flyout on the button (ILSpy uses a separate CreateListDialog; WinUI allows only
+       one ContentDialog at a time, so a flyout is the equivalent). -->
+  <Grid Width="500" Height="340" RowSpacing="8" ColumnSpacing="8">
+    <Grid.RowDefinitions>
+      <RowDefinition Height="*" />
+      <RowDefinition Height="Auto" />
+    </Grid.RowDefinitions>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="*" />
+      <ColumnDefinition Width="Auto" />
+    </Grid.ColumnDefinitions>
+
+    <!-- Existing lists (double-click / Enter to open, Delete to remove) -->
+    <ListView x:Name="_listView"
+              Grid.Row="0" Grid.Column="0"
+              SelectionMode="Single"
+              BorderThickness="1"
+              BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+              SelectionChanged="OnListSelectionChanged"
+              DoubleTapped="OnListDoubleTapped"
+              KeyDown="OnListKeyDown" />
+
+    <!-- Action buttons (ILSpy order/texts) -->
+    <StackPanel Grid.Row="0" Grid.Column="1" Spacing="6" Width="120">
+      <Button x:Name="_newButton"    Content="New"    HorizontalAlignment="Stretch" Click="OnNewClick" Margin="0,0,0,8" />
+      <Button x:Name="_cloneButton"  Content="Clone"  HorizontalAlignment="Stretch" Click="OnCloneClick" IsEnabled="False" />
+      <Button x:Name="_renameButton" Content="Rename" HorizontalAlignment="Stretch" Click="OnRenameClick" IsEnabled="False" />
+      <Button x:Name="_deleteButton" Content="Delete" HorizontalAlignment="Stretch" Click="OnDeleteClick" IsEnabled="False" />
+      <Button x:Name="_resetButton"  Content="Reset"  HorizontalAlignment="Stretch" Click="OnResetClick" Margin="0,8,0,0" />
+    </StackPanel>
+
+    <!-- Preconfigured lists -->
+    <Button x:Name="_presetButton"
+            Grid.Row="1" Grid.Column="0"
+            Content="Add Preconfigured List"
+            HorizontalAlignment="Left">
+      <Button.Flyout>
+        <MenuFlyout x:Name="_presetFlyout" />
+      </Button.Flyout>
+    </Button>
+  </Grid>
+</ContentDialog>

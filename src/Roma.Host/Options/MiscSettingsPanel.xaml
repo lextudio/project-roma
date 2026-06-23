@@ -1,0 +1,32 @@
+<UserControl
+    x:Class="Roma.Host.Options.MiscSettingsPanel"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+  <StackPanel Margin="4" Spacing="4">
+    <TextBlock Text="Misc" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,0,0,4"/>
+    <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="1" CornerRadius="4" Padding="12,8">
+      <StackPanel Spacing="6">
+        <CheckBox Content="Allow multiple instances"
+                  IsChecked="{Binding Settings.AllowMultipleInstances, Mode=TwoWay}" />
+        <CheckBox Content="Load assemblies that were loaded in the last instance."
+                  IsChecked="{Binding Settings.LoadPreviousAssemblies, Mode=TwoWay}" />
+      </StackPanel>
+    </Border>
+
+    <TextBlock Text="Shell Integration" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,8,0,4"/>
+    <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="1" CornerRadius="4" Padding="12,8">
+      <StackPanel Spacing="8">
+        <TextBlock Text="{Binding ShellIntegrationDescription}"
+                   TextWrapping="Wrap"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+        <Button x:Name="_shellIntegrationBtn"
+                Content="{Binding AddRemoveShellIntegrationText}"
+                IsEnabled="{Binding IsShellIntegrationSupported}"
+                Click="OnShellIntegrationClick" />
+      </StackPanel>
+    </Border>
+  </StackPanel>
+</UserControl>

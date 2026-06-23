@@ -1,0 +1,3 @@
+[submodule "ext/ilspy"]
+	path = ext/ilspy
+	url = https://github.com/icsharpcode/ILSpy.git

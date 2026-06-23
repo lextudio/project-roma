@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- End-to-end integration tests that launch the Roma desktop app and drive it over the DevFlow
+       REST API (port 9223). They depend on the ROMA_DIAG/Debug-only "roma.probe.*" DevFlow actions
+       in Roma.Host (Diagnostics/RomaIntegrationProbes.cs).
+
+       These boot the whole app (~20s startup) and are slow + environment-sensitive, so they are an
+       *integration* suite, not part of the inner-loop unit tests. Run explicitly:
+         dotnet test Roma/tests/Roma.IntegrationTests
+       Roma.Host must be built in a configuration where the probes are compiled (Debug, the default,
+       or any build defining ROMA_DIAG). -->
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <!-- Opt out of any ambient central package management higher in the tree. -->
+    <ManagePackageVersionsCentrally>false</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+  </ItemGroup>
+
+</Project>
