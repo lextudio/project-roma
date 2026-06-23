@@ -62,20 +62,20 @@
       <!-- File menu: Open category | Save category | Remove category | Exit -->
       <MenuBarItem Title="File">
         <MenuFlyoutItem Text="Open..." Click="OnMenuOpen">
-          <MenuFlyoutItem.Icon><ImageIcon Source="ms-appx:///ILSpyIcons/open.svg" /></MenuFlyoutItem.Icon>
+          <MenuFlyoutItem.Icon><ImageIcon Source="{local:ILSpyIcon File=open.svg}" /></MenuFlyoutItem.Icon>
         </MenuFlyoutItem>
         <MenuFlyoutItem Text="Open from GAC..." Click="OnMenuOpenFromGac">
-          <MenuFlyoutItem.Icon><ImageIcon Source="ms-appx:///ILSpyIcons/assembly_list_gac.svg" /></MenuFlyoutItem.Icon>
+          <MenuFlyoutItem.Icon><ImageIcon Source="{local:ILSpyIcon File=assembly_list_gac.svg}" /></MenuFlyoutItem.Icon>
         </MenuFlyoutItem>
         <MenuFlyoutItem Text="Manage Assembly Lists..." Click="OnMenuManageAssemblyLists">
-          <MenuFlyoutItem.Icon><ImageIcon Source="ms-appx:///ILSpyIcons/assembly_list.svg" /></MenuFlyoutItem.Icon>
+          <MenuFlyoutItem.Icon><ImageIcon Source="{local:ILSpyIcon File=assembly_list.svg}" /></MenuFlyoutItem.Icon>
         </MenuFlyoutItem>
         <MenuFlyoutItem Text="Reload All" Click="OnMenuReloadAll">
-          <MenuFlyoutItem.Icon><ImageIcon Source="ms-appx:///ILSpyIcons/refresh.svg" /></MenuFlyoutItem.Icon>
+          <MenuFlyoutItem.Icon><ImageIcon Source="{local:ILSpyIcon File=refresh.svg}" /></MenuFlyoutItem.Icon>
         </MenuFlyoutItem>
         <MenuFlyoutSeparator />
         <MenuFlyoutItem Text="Save Code..." Click="OnMenuSaveCode">
-          <MenuFlyoutItem.Icon><ImageIcon Source="ms-appx:///ILSpyIcons/save.svg" /></MenuFlyoutItem.Icon>
+          <MenuFlyoutItem.Icon><ImageIcon Source="{local:ILSpyIcon File=save.svg}" /></MenuFlyoutItem.Icon>
         </MenuFlyoutItem>
         <MenuFlyoutSeparator />
         <MenuFlyoutItem Text="Remove Assemblies with Load Errors" Click="OnMenuRemoveAssembliesWithErrors" />
@@ -101,10 +101,10 @@
         <MenuFlyoutSubItem x:Name="_uiLanguageMenu" Text="UI Language" />
         <MenuFlyoutSeparator />
         <MenuFlyoutItem Text="Sort Assembly List by Name" Click="OnSortAssemblyList">
-          <MenuFlyoutItem.Icon><ImageIcon Source="ms-appx:///ILSpyIcons/sort.svg" /></MenuFlyoutItem.Icon>
+          <MenuFlyoutItem.Icon><ImageIcon Source="{local:ILSpyIcon File=sort.svg}" /></MenuFlyoutItem.Icon>
         </MenuFlyoutItem>
         <MenuFlyoutItem Text="Collapse Tree Nodes" Click="OnCollapseAll">
-          <MenuFlyoutItem.Icon><ImageIcon Source="ms-appx:///ILSpyIcons/collapse_all.svg" /></MenuFlyoutItem.Icon>
+          <MenuFlyoutItem.Icon><ImageIcon Source="{local:ILSpyIcon File=collapse_all.svg}" /></MenuFlyoutItem.Icon>
         </MenuFlyoutItem>
         <MenuFlyoutSeparator />
         <MenuFlyoutItem Text="Options..." Click="OnMenuOptions" />
@@ -126,7 +126,7 @@
         <MenuFlyoutItem x:Name="_menuShowSearchPane"
                         Text="Search"
                         Click="OnMenuShowSearchPane">
-          <MenuFlyoutItem.Icon><ImageIcon Source="ms-appx:///ILSpyIcons/search.svg" /></MenuFlyoutItem.Icon>
+          <MenuFlyoutItem.Icon><ImageIcon Source="{local:ILSpyIcon File=search.svg}" /></MenuFlyoutItem.Icon>
         </MenuFlyoutItem>
         <MenuFlyoutItem Text="Analyze"       Click="OnMenuShowAnalyzerPane" />
         <MenuFlyoutItem Text="Debug Steps"   Click="OnMenuShowDebugStepsPane" />
@@ -169,13 +169,13 @@
                   Width="32" Height="32" Padding="0"
                   ToolTipService.ToolTip="Navigate Back"
                   Click="OnNavigateBack">
-            <Image x:Name="_navBackIcon" Width="16" Height="16" Source="ms-appx:///ILSpyIcons/back.svg" />
+            <Image x:Name="_navBackIcon" Width="16" Height="16" Source="{local:ILSpyIcon File=back.svg}" />
           </Button>
           <Button x:Name="_navForwardBtn"
                   Width="32" Height="32" Padding="0"
                   ToolTipService.ToolTip="Navigate Forward"
                   Click="OnNavigateForward">
-            <Image x:Name="_navForwardIcon" Width="16" Height="16" Source="ms-appx:///ILSpyIcons/forward.svg" />
+            <Image x:Name="_navForwardIcon" Width="16" Height="16" Source="{local:ILSpyIcon File=forward.svg}" />
           </Button>
 
           <Border Width="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="4,6" />
@@ -184,12 +184,12 @@
           <Button Width="32" Height="32" Padding="0"
                   ToolTipService.ToolTip="Open Assembly"
                   Click="OnOpenAssembly">
-            <Image Width="16" Height="16" Source="ms-appx:///ILSpyIcons/open.svg" />
+            <Image Width="16" Height="16" Source="{local:ILSpyIcon File=open.svg}" />
           </Button>
           <Button Width="32" Height="32" Padding="0"
                   ToolTipService.ToolTip="Reload All"
                   Click="OnReloadAll">
-            <Image Width="16" Height="16" Source="ms-appx:///ILSpyIcons/refresh.svg" />
+            <Image Width="16" Height="16" Source="{local:ILSpyIcon File=refresh.svg}" />
           </Button>
 
           <Border Width="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="4,6" />
@@ -203,7 +203,7 @@
                   Width="32" Height="32" Padding="0"
                   ToolTipService.ToolTip="Manage Assembly Lists"
                   Click="OnManageAssemblyLists">
-            <Image Width="16" Height="16" Source="ms-appx:///ILSpyIcons/assembly_list.svg" />
+            <Image Width="16" Height="16" Source="{local:ILSpyIcon File=assembly_list.svg}" />
           </Button>
 
           <Border Width="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="4,6" />
@@ -213,20 +213,20 @@
                         Width="32" Height="32" Padding="0"
                         ToolTipService.ToolTip="Show public types and members only"
                         Click="OnApiVisPublicOnly">
-            <Image Width="16" Height="16" Source="ms-appx:///ILSpyIcons/show_public_only.svg" />
+            <Image Width="16" Height="16" Source="{local:ILSpyIcon File=show_public_only.svg}" />
           </ToggleButton>
           <ToggleButton x:Name="_apiVisPublicAndInternal"
                         Width="32" Height="32" Padding="0"
                         ToolTipService.ToolTip="Show public and internal types and members"
                         Click="OnApiVisPublicAndInternal">
-            <Image Width="16" Height="16" Source="ms-appx:///ILSpyIcons/show_private_internal.svg" />
+            <Image Width="16" Height="16" Source="{local:ILSpyIcon File=show_private_internal.svg}" />
           </ToggleButton>
           <ToggleButton x:Name="_apiVisAll"
                         Width="32" Height="32" Padding="0"
                         IsChecked="True"
                         ToolTipService.ToolTip="Show all types and members"
                         Click="OnApiVisAll">
-            <Image Width="16" Height="16" Source="ms-appx:///ILSpyIcons/show_all.svg" />
+            <Image Width="16" Height="16" Source="{local:ILSpyIcon File=show_all.svg}" />
           </ToggleButton>
 
           <Border Width="1" Background="{ThemeResource DividerStrokeColorDefaultBrush}" Margin="4,6" />
@@ -252,18 +252,18 @@
           <Button Width="32" Height="32" Padding="0"
                   ToolTipService.ToolTip="Sort Assembly List by Name"
                   Click="OnSortAssemblyList">
-            <Image Width="16" Height="16" Source="ms-appx:///ILSpyIcons/sort.svg" />
+            <Image Width="16" Height="16" Source="{local:ILSpyIcon File=sort.svg}" />
           </Button>
           <Button Width="32" Height="32" Padding="0"
                   ToolTipService.ToolTip="Collapse All Tree Nodes"
                   Click="OnCollapseAll">
-            <Image Width="16" Height="16" Source="ms-appx:///ILSpyIcons/collapse_all.svg" />
+            <Image Width="16" Height="16" Source="{local:ILSpyIcon File=collapse_all.svg}" />
           </Button>
           <Button x:Name="_toolbarSearchButton"
                   Width="32" Height="32" Padding="0"
                   ToolTipService.ToolTip="Search (Ctrl+Shift+F)"
                   Click="OnSearch">
-            <Image Width="16" Height="16" Source="ms-appx:///ILSpyIcons/search.svg" />
+            <Image Width="16" Height="16" Source="{local:ILSpyIcon File=search.svg}" />
           </Button>
 
         </StackPanel>

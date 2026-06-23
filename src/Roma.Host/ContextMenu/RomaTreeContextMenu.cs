@@ -23,6 +23,8 @@ using ICSharpCode.ILSpy;
 using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
 
+using Roma.Host;
+
 using ILSpyResources = ICSharpCode.ILSpy.Properties.Resources;
 using RomaResources = Roma.Host.Properties.Resources;
 
@@ -202,7 +204,7 @@ internal sealed class RomaTreeContextMenu
             if (string.IsNullOrEmpty(iconPath))
                 return null;
             return IconAssets.TryGetValue(iconPath, out var asset)
-                ? $"ms-appx:///ILSpyIcons/{asset}"
+                ? ILSpyIconHelper.GetUri(asset).ToString()
                 : null;
         }
     }

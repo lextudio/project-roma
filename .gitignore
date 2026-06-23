@@ -3,3 +3,5 @@ obj/
 .DS_Store
 .idea/
 .vscode/
+Roma.app/
+*.dmg

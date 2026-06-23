@@ -25,6 +25,35 @@ is_macho() {
   file -b "$path" 2>/dev/null | grep -q "Mach-O"
 }
 
+# Uno's macOS Skia runtime, when it detects it is running inside a .app bundle, resolves
+# ms-appx:/// assets from "{executable dir}/Resources" (Package.Current.InstalledPath +
+# "Resources"). Since our payload (executable + assets) lives in Contents/MacOS, that means
+# the runtime looks under Contents/MacOS/Resources. Without this, embedded fonts (the Fluent
+# symbol font behind tree/combo/menu glyphs) and other ms-appx assets fail to load and render
+# as missing-glyph "[?]" boxes. Mirror the asset content into Contents/MacOS/Resources.
+# (Code/debug artifacts are flat at the payload root; every top-level directory is an asset dir.)
+populate_resources() {
+  local macos="$1"
+  local res="$macos/Resources"
+  mkdir -p "$res"
+
+  local d name
+  for d in "$macos"/*/; do
+    [[ -d "$d" ]] || continue
+    d="${d%/}"  # strip trailing slash so cp copies the directory, not its contents
+    name="$(basename "$d")"
+    [[ "$name" == "Resources" ]] && continue
+    cp -Rp "$d" "$res/"
+  done
+
+  # Loose asset files at the payload root (splash screens, font markers, images).
+  find "$macos" -maxdepth 1 -type f \( \
+    -iname "*.png" -o -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.gif" \
+    -o -iname "*.svg" -o -iname "*.ttf" -o -iname "*.otf" -o -iname "*.ico" \
+    -o -iname "*.webp" -o -iname "*.uprimarker" \) \
+    -exec cp -p {} "$res/" \;
+}
+
 if [[ "$rid" != "osx-universal" ]]; then
   src="$base_dir/$rid/publish"
   if [[ ! -d "$src" ]]; then
@@ -32,6 +61,7 @@ if [[ "$rid" != "osx-universal" ]]; then
     exit 1
   fi
   cp -Rp "$src"/. "$bundle_macos/"
+  populate_resources "$bundle_macos"
   exit 0
 fi
 
@@ -73,3 +103,5 @@ while IFS= read -r -d '' arm_file; do
   lipo -create "$x64_file" "$arm_file" -output "$dest_file"
   chmod +x "$dest_file" || true
 done < <(find "$arm_src" -type f -print0)
+
+populate_resources "$bundle_macos"

@@ -73,29 +73,27 @@ public sealed partial class SearchPane : UserControl
 
     // ── Search mode descriptors (no WPF ImageSource needed) ─────
 
-    const string IconBase = "ms-appx:///ILSpyIcons/";
-
     static readonly SearchModeDescriptor[] SearchModes =
     [
-        new(SearchMode.TypeAndMember, "Types and Members", IconBase + "library.svg"),
-        new(SearchMode.Type,          "Type",              IconBase + "class.svg"),
-        new(SearchMode.Member,        "Member",            IconBase + "property.svg"),
-        new(SearchMode.Method,        "Method",            IconBase + "method.svg"),
-        new(SearchMode.Field,         "Field",             IconBase + "field.svg"),
-        new(SearchMode.Property,      "Property",          IconBase + "property.svg"),
-        new(SearchMode.Event,         "Event",             IconBase + "event.svg"),
-        new(SearchMode.Literal,       "Constant",          IconBase + "literal.svg"),
-        new(SearchMode.Token,         "Metadata Token",    IconBase + "library.svg"),
-        new(SearchMode.Resource,      "Resource",          IconBase + "resource.svg"),
-        new(SearchMode.Assembly,      "Assembly",          IconBase + "assembly.svg"),
-        new(SearchMode.Namespace,     "Namespace",         IconBase + "namespace.svg"),
+        new(SearchMode.TypeAndMember, "Types and Members", "library.svg"),
+        new(SearchMode.Type,          "Type",              "class.svg"),
+        new(SearchMode.Member,        "Member",            "property.svg"),
+        new(SearchMode.Method,        "Method",            "method.svg"),
+        new(SearchMode.Field,         "Field",             "field.svg"),
+        new(SearchMode.Property,      "Property",          "property.svg"),
+        new(SearchMode.Event,         "Event",             "event.svg"),
+        new(SearchMode.Literal,       "Constant",          "literal.svg"),
+        new(SearchMode.Token,         "Metadata Token",    "library.svg"),
+        new(SearchMode.Resource,      "Resource",          "resource.svg"),
+        new(SearchMode.Assembly,      "Assembly",          "assembly.svg"),
+        new(SearchMode.Namespace,     "Namespace",         "namespace.svg"),
     ];
 
-    internal sealed class SearchModeDescriptor(SearchMode mode, string name, string iconUri)
+    internal sealed class SearchModeDescriptor(SearchMode mode, string name, string iconFile)
     {
         public SearchMode Mode { get; } = mode;
         public string Name { get; } = name;
-        public Microsoft.UI.Xaml.Media.Imaging.SvgImageSource Icon { get; } = new(new Uri(iconUri));
+        public Microsoft.UI.Xaml.Media.Imaging.SvgImageSource Icon { get; } = ILSpyIconHelper.GetSource(iconFile);
     }
 
     // ── UI event handlers ────────────────────────────────────────

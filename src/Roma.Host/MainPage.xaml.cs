@@ -731,7 +731,7 @@ public sealed partial class MainPage : Page
         // (no -disabled.svg asset): recolor the action-blue fill to grey, mirroring Images.EnsureDark-
         // Variant (Uno's SvgImageSource can't load data:/in-memory streams, so the recolored SVG is
         // written to LocalFolder and loaded via ms-appdata). Falls back to the colored icon on failure.
-        var colorUri = new Uri($"ms-appx:///ILSpyIcons/{baseName}.svg");
+        var colorUri = ILSpyIconHelper.GetUri($"{baseName}.svg");
         var uri = enabled ? colorUri : (EnsureDisabledNavVariant(baseName) ?? colorUri);
         icon.Source = new Microsoft.UI.Xaml.Media.Imaging.SvgImageSource(uri);
     }
