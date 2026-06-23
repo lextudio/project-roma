@@ -6,7 +6,7 @@
     See https://aka.platform.uno/using-uno-sdk#implicit-packages for more information regarding the Implicit Packages.
   -->
   <ItemGroup>
-    <PackageVersion Include="LeXtudio.UnoEdit" Version="0.7.4" />
+    <PackageVersion Include="LeXtudio.UnoEdit" Version="0.7.5" />
     <PackageVersion Include="LeXtudio.Windows" Version="0.8.5" />
     <PackageVersion Include="LeXtudio.RichText" Version="0.7.5" />
     <PackageVersion Include="LeXtudio.UnoDock" Version="0.1.10" />
