@@ -43,8 +43,8 @@
   <ItemGroup>
     <ProjectReference Include="..\..\ext\ilspy\ICSharpCode.Decompiler\ICSharpCode.Decompiler.csproj" />
     <ProjectReference Include="..\..\ext\ilspy\ICSharpCode.ILSpyX\ICSharpCode.ILSpyX.csproj" />
-    <ProjectReference Include="..\..\..\TomsToolbox2\src\TomsToolbox.Wpf.Uno\TomsToolbox.Wpf.Uno.csproj" />
-    <ProjectReference Include="..\..\..\TomsToolbox2\src\TomsToolbox.Composition\TomsToolbox.Composition.csproj" />
+    <ProjectReference Include="..\..\ext\tomstoolbox2\src\TomsToolbox.Wpf.Uno\TomsToolbox.Wpf.Uno.csproj" />
+    <ProjectReference Include="..\..\ext\tomstoolbox2\src\TomsToolbox.Composition\TomsToolbox.Composition.csproj" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(UseNuGetPackages)' == 'true'">
@@ -53,7 +53,6 @@
     <PackageReference Include="LeXtudio.RichText" />
     <PackageReference Include="LeXtudio.UnoDock" />
     <PackageReference Include="LeXtudio.UnoDock.Themes.VS2013" />
-    <PackageReference Include="LeXtudio.DevFlow.Agent.Uno" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(UseNuGetPackages)' != 'true'">
@@ -62,7 +61,6 @@
     <ProjectReference Include="..\..\..\WindowsShims\src\LeXtudio.Windows\LeXtudio.Windows.csproj" />
     <ProjectReference Include="..\..\..\UnoDock\src\UnoDock\UnoDock.csproj" />
     <ProjectReference Include="..\..\..\UnoDock\src\UnoDock.Themes.VS2013\UnoDock.Themes.VS2013.csproj" />
-    <ProjectReference Include="..\..\..\wpf-labs\src\DevFlow\LeXtudio.DevFlow.Agent.Uno\LeXtudio.DevFlow.Agent.Uno.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -73,6 +71,7 @@
          ExportContextMenuEntryAttribute in ContextMenuEntry.cs. Version aligned with ILSpyX. -->
     <PackageReference Include="System.Composition.AttributedModel" />
     <PackageReference Include="Tmds.DBus.Protocol" />
+    <PackageReference Include="LeXtudio.DevFlow.Agent.Uno" />
   </ItemGroup>
 
   <ItemGroup>
