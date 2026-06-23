@@ -75,6 +75,11 @@
     <PackageReference Include="Tmds.DBus.Protocol" />
   </ItemGroup>
 
+  <ItemGroup>
+    <UnoIcon Include="Assets\Icons\icon.svg" ForegroundFile="Assets\Icons\icon_foreground.svg" ForegroundScale="0.65" Color="#ffffff" />
+    <UnoSplashScreen Include="Assets\Splash\splash_screen.svg" BaseSize="128,128" Color="#ffffff" />
+  </ItemGroup>
+
   <!-- ILSpy icon SVGs live in ILSpyIcons/ (outside Assets/) so Resizetizer never
        touches them. Included as plain Content so they reach the output as raw SVGs
        that SvgImageSource can load via ms-appx:///ILSpyIcons/xxx.svg. -->

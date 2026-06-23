@@ -147,7 +147,13 @@ public static class RomaAssemblyTree
         // assembly path (independent of the active list; the live path decompiles via each node's
         // language/DecompilerTextView instead).
         var assemblyPath = typeof(RomaAssemblyTree).Assembly.Location;
-        CSharpDecompiler decompiler = new CSharpDecompiler(assemblyPath, new ICSharpCode.Decompiler.DecompilerSettings());
+        // ThrowOnAssemblyResolveErrors defaults to true, which aborts type-system init the moment a
+        // reference can't be found — and when Roma runs as a GUI-launched app (no shell PATH), the
+        // resolver's DotNetCorePathFinder can't locate `dotnet`, so the .NET shared runtime
+        // (System.Runtime etc.) is unreachable. ILSpy's own CLI/PowerShell entry points set this to
+        // false so missing references degrade gracefully instead of crashing; do the same here.
+        CSharpDecompiler decompiler = new CSharpDecompiler(assemblyPath,
+            new ICSharpCode.Decompiler.DecompilerSettings { ThrowOnAssemblyResolveErrors = false });
 
         // ILSpy design: the (invisible) tree root is an AssemblyListTreeNode bound to the
         // AssemblyList. Rather than build a standalone root here, hand the resolved list to the real
