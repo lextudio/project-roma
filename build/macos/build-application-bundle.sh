@@ -8,7 +8,7 @@ if [[ $# -ne 1 ]]; then
 fi
 
 rid="$1"
-base_dir="Roma/src/Roma.Host/bin/Release/net10.0-desktop"
+base_dir="src/Roma.Host/bin/Release/net10.0-desktop"
 bundle_root="Roma.app"
 bundle_macos="$bundle_root/Contents/MacOS"
 script_dir="$(cd "$(dirname "$0")" && pwd)"
