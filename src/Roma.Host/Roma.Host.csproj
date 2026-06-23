@@ -37,7 +37,7 @@
       SkiaRenderer;
       Svg;
     </UnoFeatures>
-    <UseNuGetPackages>false</UseNuGetPackages>
+    <UseNuGetPackages>true</UseNuGetPackages>
   </PropertyGroup>
 
   <ItemGroup>
