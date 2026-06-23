@@ -15,9 +15,15 @@
     <ApplicationTitle>Roma</ApplicationTitle>
     <!-- App Identifier -->
     <ApplicationId>com.lextudio.roma</ApplicationId>
-    <!-- Versions -->
-    <ApplicationDisplayVersion>1.0</ApplicationDisplayVersion>
-    <ApplicationVersion>1</ApplicationVersion>
+    <!-- Versions: populated by GitVersion.MsBuild at build time via environment variables -->
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <Version>$(GitVersion_NuGetVersionV2)</Version>
+    <PackageVersion>$(GitVersion_NuGetVersionV2)</PackageVersion>
+    <AssemblyVersion>$(GitVersion_Major).$(GitVersion_Minor).$(GitVersion_Patch).0</AssemblyVersion>
+    <FileVersion>$(GitVersion_Major).$(GitVersion_Minor).$(GitVersion_Patch).0</FileVersion>
+    <AssemblyInformationalVersion>$(GitVersion_FullSemVer)+$(GitCommitId)</AssemblyInformationalVersion>
+    <ApplicationDisplayVersion>$(GitVersion_MajorMinorPatch)</ApplicationDisplayVersion>
+    <ApplicationVersion>$(GitVersion_CommitsSinceVersionSource)</ApplicationVersion>
     <!-- Package Publisher -->
     <ApplicationPublisher>LeXtudio</ApplicationPublisher>
     <!-- Package Description -->
@@ -60,6 +66,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="GitVersion.MsBuild" PrivateAssets="all" />
     <PackageReference Include="CommunityToolkit.WinUI.Controls.Primitives" />
     <PackageReference Include="McMaster.Extensions.CommandLineUtils" />
     <!-- System.Composition.AttributedModel: ExportAttribute + MetadataAttribute used by
