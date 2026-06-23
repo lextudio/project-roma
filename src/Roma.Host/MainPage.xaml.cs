@@ -547,6 +547,14 @@ public sealed partial class MainPage : Page
         onLoaded = (_, _) =>
         {
             Loaded -= onLoaded;
+            // macOS: Uno's Skia host doesn't deliver OS file drops to the XAML layer, so hook the
+            // native NSView's NSDraggingDestination directly. The callback runs on the AppKit main
+            // thread; marshal onto the dispatcher to mutate the assembly list. (Windows/Linux use the
+            // tree's DragOver/Drop handlers wired in CreateAssemblyBrowserContent.)
+            MacOSFileDrop.FilesDropped = paths =>
+                DispatcherQueue.TryEnqueue(() => OpenAssembliesFromPaths(paths));
+            if (MacOSFileDrop.Install())
+                Dbg("macOS native file-drop handler installed");
             // At startup, XamlRoot can be unavailable during InitializeComponent/constructor time.
             // Reapply the persisted theme once loaded so the window root, main menu, and toolbar
             // all resolve ThemeResource brushes from the selected light/dark dictionary.
@@ -1127,7 +1135,75 @@ public sealed partial class MainPage : Page
             flyout?.ShowAt(_assemblyTree, new FlyoutShowOptions { Position = args.GetPosition(_assemblyTree) });
         };
 
+        // Accept assemblies dragged in from Finder / Explorer. On Windows/Linux these WinUI
+        // StorageItems drop events fire normally; on macOS they don't (see MacOSFileDrop, wired in
+        // the Loaded handler), so this path is effectively the non-macOS one.
+        _assemblyTree.AllowDrop = true;
+        _assemblyTree.DragOver += OnAssemblyTreeDragOver;
+        _assemblyTree.Drop += OnAssemblyTreeDrop;
+
         return _assemblyTree;
+    }
+
+    // Show the "copy" cursor while files are dragged over the tree; reject non-file payloads
+    // (e.g. text) so the OS gives the user the no-drop cursor.
+    private void OnAssemblyTreeDragOver(object sender, Microsoft.UI.Xaml.DragEventArgs e)
+    {
+        if (e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
+        {
+            e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.Copy;
+            e.DragUIOverride.Caption = "Open assembly";
+            e.DragUIOverride.IsCaptionVisible = true;
+            e.DragUIOverride.IsGlyphVisible = true;
+        }
+        else
+        {
+            e.AcceptedOperation = Windows.ApplicationModel.DataTransfer.DataPackageOperation.None;
+        }
+    }
+
+    private async void OnAssemblyTreeDrop(object sender, Microsoft.UI.Xaml.DragEventArgs e)
+    {
+        if (!e.DataView.Contains(Windows.ApplicationModel.DataTransfer.StandardDataFormats.StorageItems))
+            return;
+
+        // GetStorageItemsAsync can complete after the event returns, so take a deferral to keep the
+        // DataView alive while we read it.
+        var deferral = e.GetDeferral();
+        try
+        {
+            var items = await e.DataView.GetStorageItemsAsync();
+            OpenAssembliesFromPaths(items.OfType<Windows.Storage.StorageFile>().Select(f => f.Path).ToList());
+        }
+        catch (Exception ex)
+        {
+            Dbg($"OnAssemblyTreeDrop: {ex.GetType().Name}: {ex.Message}");
+        }
+        finally
+        {
+            deferral.Complete();
+        }
+    }
+
+    // Opens each path as an assembly (shared by the WinUI drop handler and the macOS native drop
+    // hook). Must run on the UI thread. Mirrors OpenAssemblyAsync's per-file open.
+    private void OpenAssembliesFromPaths(IReadOnlyList<string> paths)
+    {
+        foreach (var path in paths)
+        {
+            if (string.IsNullOrEmpty(path))
+                continue;
+            try
+            {
+                _assemblyContext.AssemblyList.UseDebugSymbols = true;
+                var loaded = _assemblyContext.AssemblyList.OpenAssembly(path);
+                Dbg($"Opened (drop): {loaded?.ShortName}");
+            }
+            catch (Exception ex)
+            {
+                Dbg($"OpenAssembliesFromPaths: {path}: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
     }
 
     private MenuFlyout? BuildTreeContextFlyout(TextViewContext ctx)
