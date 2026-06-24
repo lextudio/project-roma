@@ -1067,13 +1067,7 @@ public sealed partial class MainPage : Page
         if (result != true)
             return;
 
-        foreach (var path in dlg.FileNames)
-        {
-            Dbg($"Open: {path}");
-            _assemblyContext.AssemblyList.UseDebugSymbols = true;
-            var loaded = _assemblyContext.AssemblyList.OpenAssembly(path);
-            Dbg($"Opened: {loaded.ShortName}");
-        }
+        OpenAssembliesFromPaths(dlg.FileNames);
     }
 
     // ── Reload ──────────────────────────────────────────────────
