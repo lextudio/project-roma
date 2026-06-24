@@ -70,6 +70,12 @@ public partial class App : Microsoft.UI.Xaml.Application
         // Ensure the current window is active
         MainWindow.Activate();
 
+        // macOS: install the "Open With Roma" (application:openURLs:) handler now — Uno's host
+        // doesn't forward it, so without this AppKit reports "cannot open files in the … format".
+        // Installed after Activate (the NSApplication delegate exists by then); a cold-launch open
+        // event is buffered in MacOSFileDrop until MainPage registers its handler.
+        Roma.Host.MacOSFileDrop.InstallOpenWith();
+
 #if DEBUG && HAS_UNO
         new LeXtudio.DevFlow.Agent.Uno.UnoAgentService(new Microsoft.Maui.DevFlow.Agent.Core.AgentOptions { Port = 9223 }).Start();
 #endif

@@ -551,10 +551,14 @@ public sealed partial class MainPage : Page
             // native NSView's NSDraggingDestination directly. The callback runs on the AppKit main
             // thread; marshal onto the dispatcher to mutate the assembly list. (Windows/Linux use the
             // tree's DragOver/Drop handlers wired in CreateAssemblyBrowserContent.)
-            MacOSFileDrop.FilesDropped = paths =>
-                DispatcherQueue.TryEnqueue(() => OpenAssembliesFromPaths(paths));
+            MacOSFileDrop.RegisterHandler(paths =>
+                DispatcherQueue.TryEnqueue(() => OpenAssembliesFromPaths(paths)));
             if (MacOSFileDrop.Install())
                 Dbg("macOS native file-drop handler installed");
+            // Re-register the open-documents Apple Event handler now that AppKit/Uno have finished
+            // launching — finishLaunching installs the default odoc handler that overwrites our
+            // earlier (OnLaunched) registration, so claim it again here to win the race.
+            MacOSFileDrop.RegisterOpenDocumentsHandler();
             // At startup, XamlRoot can be unavailable during InitializeComponent/constructor time.
             // Reapply the persisted theme once loaded so the window root, main menu, and toolbar
             // all resolve ThemeResource brushes from the selected light/dark dictionary.
@@ -1185,24 +1189,25 @@ public sealed partial class MainPage : Page
         }
     }
 
-    // Opens each path as an assembly (shared by the WinUI drop handler and the macOS native drop
-    // hook). Must run on the UI thread. Mirrors OpenAssemblyAsync's per-file open.
+    // Opens the given paths as assemblies and selects/focuses the first one in the tree (shared by
+    // the WinUI drop handler and the macOS native drop / Open-With hook). Must run on the UI thread.
+    // Uses the model's OpenFiles (the same path ILSpy's drop/open-file uses), which loads each file
+    // and focuses its node — so a freshly opened assembly becomes the tree selection rather than
+    // leaving the prior/restored selection in place (notably after a cold "Open With" launch).
     private void OpenAssembliesFromPaths(IReadOnlyList<string> paths)
     {
-        foreach (var path in paths)
+        var valid = paths.Where(p => !string.IsNullOrEmpty(p)).ToArray();
+        if (valid.Length == 0)
+            return;
+        try
         {
-            if (string.IsNullOrEmpty(path))
-                continue;
-            try
-            {
-                _assemblyContext.AssemblyList.UseDebugSymbols = true;
-                var loaded = _assemblyContext.AssemblyList.OpenAssembly(path);
-                Dbg($"Opened (drop): {loaded?.ShortName}");
-            }
-            catch (Exception ex)
-            {
-                Dbg($"OpenAssembliesFromPaths: {path}: {ex.GetType().Name}: {ex.Message}");
-            }
+            _assemblyContext.AssemblyList.UseDebugSymbols = true;
+            _assemblyTreeModel?.OpenFiles(valid, focusNode: true);
+            Dbg($"Opened (drop): {string.Join(", ", valid)}");
+        }
+        catch (Exception ex)
+        {
+            Dbg($"OpenAssembliesFromPaths: {ex.GetType().Name}: {ex.Message}");
         }
     }
 
@@ -1214,6 +1219,12 @@ public sealed partial class MainPage : Page
     private static void Dbg(string msg)
     {
         try { System.IO.File.AppendAllText(_dbgLog, $"[{DateTime.Now:HH:mm:ss.fff}] {msg}\n"); } catch { }
+    }
+
+    // Truncates the debug log so each run starts clean (called at the very start of App.OnLaunched).
+    internal static void ResetLog()
+    {
+        try { System.IO.File.WriteAllText(_dbgLog, $"[{DateTime.Now:HH:mm:ss.fff}] ── Roma started ──\n"); } catch { }
     }
 
     // Reacts to the model's selection by rendering the node in the WinUI document view. Navigation
