@@ -540,6 +540,8 @@ public sealed partial class MainPage : Page
         WireDocumentTabs();
         InitializeThemingAndLocalization();
         InitializeToolbar();
+        InitializeMacOSNativeMenu();
+        ApplyMacOSAppMenuVisibility();
         // Reference jumps (clicking a type/member link in the decompiled text) are handled by the real
         // AssemblyTreeModel, which subscribes to NavigateToReferenceEventArgs in its ctor and routes
         // through JumpToReferenceAsync → SelectNode → our SelectedItems observer. No Roma handler needed.
@@ -563,6 +565,7 @@ public sealed partial class MainPage : Page
             // Reapply the persisted theme once loaded so the window root, main menu, and toolbar
             // all resolve ThemeResource brushes from the selected light/dark dictionary.
             ReapplyPersistedTheme();
+            ApplyMacOSAppMenuVisibility();
             // Wire the multi-tab document surface once the DockingManager's layout is realized.
             WireDocumentTabs();
             // ILSpy parity: with no assemblies loaded (first run after the user cleared the list),
@@ -645,9 +648,187 @@ public sealed partial class MainPage : Page
         var dialog = new Options.OptionsDialog(_assemblyContext.SettingsService)
         {
             XamlRoot = XamlRoot,
-            OnSaved = RedecompileCurrentNode,
+            OnSaved = () =>
+            {
+                ApplyMacOSAppMenuVisibility();
+                RedecompileCurrentNode();
+            },
         };
         await dialog.ShowAsync();
+    }
+
+    private void InitializeMacOSNativeMenu()
+    {
+        if (!OperatingSystem.IsMacOS())
+            return;
+
+        if (MacOSNativeMenu.Install(
+            command => DispatcherQueue.TryEnqueue(() => ExecuteNativeMenuCommand(command)),
+            BuildMacOSNativeMenuState()))
+            Dbg("macOS native menu installed");
+    }
+
+    private void RefreshMacOSNativeMenu()
+    {
+        if (!OperatingSystem.IsMacOS())
+            return;
+        MacOSNativeMenu.Update(BuildMacOSNativeMenuState());
+    }
+
+    private MacOSNativeMenu.NativeMenuState BuildMacOSNativeMenuState()
+    {
+        var apiVisibility = _assemblyContext.SettingsService.SessionSettings.LanguageSettings.ShowApiLevel;
+        var currentTheme = _assemblyContext.SettingsService.SessionSettings.Theme;
+        var currentCulture = _assemblyContext.SettingsService.SessionSettings.CurrentCulture;
+        var currentLanguage = _assemblyContext.LanguageService.Language;
+        var currentVersion = _assemblyContext.LanguageService.LanguageVersion;
+
+        var apiItems = new[]
+        {
+            new MacOSNativeMenu.NativeMenuChoice("Show public types and members only", "view.apiPublicOnly", apiVisibility == ApiVisibility.PublicOnly, "person"),
+            new MacOSNativeMenu.NativeMenuChoice("Show internal types and members", "view.apiPublicInternal", apiVisibility == ApiVisibility.PublicAndInternal, "person.2"),
+            new MacOSNativeMenu.NativeMenuChoice("Show all types and members", "view.apiAll", apiVisibility == ApiVisibility.All, "person.3"),
+        };
+
+        var themeItems = RomaThemes
+            .Select(t => new MacOSNativeMenu.NativeMenuChoice(t.Name, $"theme:{t.Name}", t.Name == currentTheme, t.IsDark ? "moon" : "sun.max"))
+            .ToList();
+
+        var uiLanguageItems = new List<MacOSNativeMenu.NativeMenuChoice>
+        {
+            new("System Default", "uiCulture:", string.IsNullOrEmpty(currentCulture), "globe")
+        };
+        uiLanguageItems.AddRange(AvailableUiCultures()
+            .Select(c => new MacOSNativeMenu.NativeMenuChoice(
+                $"{c.NativeName} ({c.Name})",
+                $"uiCulture:{c.Name}",
+                string.Equals(currentCulture, c.Name, StringComparison.OrdinalIgnoreCase),
+                "character.book.closed")));
+
+        var languageItems = _assemblyContext.LanguageService.AllLanguages
+            .Select(l => new MacOSNativeMenu.NativeMenuChoice(
+                l.Name,
+                $"language:{l.Name}",
+                ReferenceEquals(l, currentLanguage) || string.Equals(l.Name, currentLanguage?.Name, StringComparison.Ordinal),
+                "chevron.left.forwardslash.chevron.right"))
+            .ToList();
+
+        var versionItems = currentLanguage?.HasLanguageVersions == true
+            ? currentLanguage.LanguageVersions
+                .Select(v => new MacOSNativeMenu.NativeMenuChoice(
+                    v.DisplayName,
+                    $"languageVersion:{v.DisplayName}",
+                    ReferenceEquals(v, currentVersion) || string.Equals(v.DisplayName, currentVersion?.DisplayName, StringComparison.Ordinal),
+                    "number"))
+                .ToList()
+            : [];
+
+        return new(apiItems, themeItems, uiLanguageItems, languageItems, versionItems);
+    }
+
+    private void ApplyMacOSAppMenuVisibility()
+    {
+        if (!OperatingSystem.IsMacOS())
+            return;
+
+        var hostSettings = _assemblyContext.SettingsService.GetSettings<RomaHostSettings>();
+        _menuBar.Visibility = hostSettings.HideMacOSAppMenu
+            ? Visibility.Collapsed
+            : Visibility.Visible;
+    }
+
+    private void ExecuteNativeMenuCommand(string command)
+    {
+        switch (command)
+        {
+            case "file.open": _ = OpenAssemblyAsync(); break;
+            case "file.openGac": OnMenuOpenFromGac(_menuBar, new RoutedEventArgs()); break;
+            case "file.manageAssemblyLists": ShowManageAssemblyListsDialog(); break;
+            case "file.reloadAll": ReloadAll(); break;
+            case "file.saveCode": OnMenuSaveCode(_menuBar, new RoutedEventArgs()); break;
+            case "file.removeErrors": OnMenuRemoveAssembliesWithErrors(_menuBar, new RoutedEventArgs()); break;
+            case "file.clearAssemblyList": OnMenuClearAssemblyList(_menuBar, new RoutedEventArgs()); break;
+            case "file.exit": Microsoft.UI.Xaml.Application.Current.Exit(); break;
+            case "view.apiPublicOnly": SetApiVis(ApiVisibility.PublicOnly); break;
+            case "view.apiPublicInternal": SetApiVis(ApiVisibility.PublicAndInternal); break;
+            case "view.apiAll": SetApiVis(ApiVisibility.All); break;
+            case "view.sortAssemblyList": OnSortAssemblyList(_menuBar, new RoutedEventArgs()); break;
+            case "view.collapseAll": OnCollapseAll(_menuBar, new RoutedEventArgs()); break;
+            case "view.options": OnMenuOptions(_menuBar, new RoutedEventArgs()); break;
+            case "window.assemblies": OnMenuShowAssembliesPane(_menuBar, new RoutedEventArgs()); break;
+            case "window.search": ShowSearchPane(); break;
+            case "window.analyze": DockWorkspace.ShowToolPane("analyzerPane"); break;
+            case "window.debugSteps": OnMenuShowDebugStepsPane(_menuBar, new RoutedEventArgs()); break;
+            case "window.closeAllDocuments": OnMenuCloseAllDocuments(_menuBar, new RoutedEventArgs()); break;
+            case "window.resetLayout": OnMenuResetLayout(_menuBar, new RoutedEventArgs()); break;
+            case "window.code": OnMenuShowCodeTab(_menuBar, new RoutedEventArgs()); break;
+            case "help.checkUpdates": OnCheckForUpdates(); break;
+            case "help.about": ShowAboutPage(); break;
+            default:
+                if (command.StartsWith("theme:", StringComparison.Ordinal))
+                {
+                    ApplyThemeFromNativeMenu(command["theme:".Length..]);
+                }
+                else if (command.StartsWith("uiCulture:", StringComparison.Ordinal))
+                {
+                    ApplyCulture(command["uiCulture:".Length..], persist: true);
+                    RefreshMacOSNativeMenu();
+                }
+                else if (command.StartsWith("language:", StringComparison.Ordinal))
+                {
+                    ApplyDecompilerLanguageFromNativeMenu(command["language:".Length..]);
+                }
+                else if (command.StartsWith("languageVersion:", StringComparison.Ordinal))
+                {
+                    ApplyDecompilerLanguageVersionFromNativeMenu(command["languageVersion:".Length..]);
+                }
+                else
+                {
+                    Dbg($"macOS native menu: unknown command '{command}'");
+                }
+                break;
+        }
+    }
+
+    private void ApplyThemeFromNativeMenu(string name)
+    {
+        var def = RomaThemes.FirstOrDefault(t => string.Equals(t.Name, name, StringComparison.Ordinal));
+        if (def.Name is null)
+            return;
+        ApplyTheme(def.Name, def.IsDark);
+    }
+
+    private void ApplyDecompilerLanguageFromNativeMenu(string name)
+    {
+        var language = _assemblyContext.LanguageService.AllLanguages
+            .FirstOrDefault(l => string.Equals(l.Name, name, StringComparison.Ordinal));
+        if (language is null)
+            return;
+
+        _assemblyContext.LanguageService.Language = language;
+        _languageCombo.SelectedItem = language;
+        UpdateLanguageVersionCombo(language);
+        RefreshMacOSNativeMenu();
+        Dbg($"Native Menu: Language → {language.Name}");
+        RedecompileCurrentNode();
+    }
+
+    private void ApplyDecompilerLanguageVersionFromNativeMenu(string displayName)
+    {
+        var language = _assemblyContext.LanguageService.Language;
+        if (language?.HasLanguageVersions != true)
+            return;
+
+        var version = language.LanguageVersions
+            .FirstOrDefault(v => string.Equals(v.DisplayName, displayName, StringComparison.Ordinal));
+        if (version is null)
+            return;
+
+        _assemblyContext.LanguageService.LanguageVersion = version;
+        _languageVersionCombo.SelectedItem = version;
+        RefreshMacOSNativeMenu();
+        Dbg($"Native Menu: LanguageVersion → {version.DisplayName}");
+        RedecompileCurrentNode();
     }
 
     // ── Menu: Window ────────────────────────────────────────────
@@ -809,6 +990,7 @@ public sealed partial class MainPage : Page
         _assemblyContext.SettingsService.SessionSettings.LanguageSettings.ShowApiLevel = vis;
 
         Dbg($"ApiVis → {vis}");
+        RefreshMacOSNativeMenu();
 
         // Re-decompile if a code node is currently shown.
         RedecompileCurrentNode();
@@ -833,6 +1015,7 @@ public sealed partial class MainPage : Page
         _assemblyContext.LanguageService.Language = lang;
 
         UpdateLanguageVersionCombo(lang);
+        RefreshMacOSNativeMenu();
         Dbg($"Toolbar: Language → {lang.Name}");
         RedecompileCurrentNode();
     }
@@ -856,6 +1039,7 @@ public sealed partial class MainPage : Page
         if (_languageVersionCombo.SelectedItem is LanguageVersion ver)
         {
             _assemblyContext.LanguageService.LanguageVersion = ver;
+            RefreshMacOSNativeMenu();
             Dbg($"Toolbar: LanguageVersion → {ver.DisplayName}");
             RedecompileCurrentNode();
         }

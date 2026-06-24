@@ -171,6 +171,7 @@ public sealed partial class MainPage
 
         foreach (var item in _themeMenu.Items.OfType<RadioMenuFlyoutItem>())
             item.IsChecked = item.Text == name;
+        RefreshMacOSNativeMenu();
 
         // Re-render the open tab so its already-decompiled content adopts the new theme. The editor
         // chrome restyles immediately, but the decompiled text (syntax colors baked at render time)
@@ -291,5 +292,6 @@ public sealed partial class MainPage
         foreach (var item in _uiLanguageMenu.Items.OfType<RadioMenuFlyoutItem>())
             item.IsChecked = string.Equals(item.Tag as string, culture, StringComparison.OrdinalIgnoreCase)
                 || (string.IsNullOrEmpty(item.Tag as string) && string.IsNullOrEmpty(culture));
+        RefreshMacOSNativeMenu();
     }
 }

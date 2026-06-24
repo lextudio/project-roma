@@ -12,6 +12,10 @@
                   IsChecked="{Binding Settings.AllowMultipleInstances, Mode=TwoWay}" />
         <CheckBox Content="Load assemblies that were loaded in the last instance."
                   IsChecked="{Binding Settings.LoadPreviousAssemblies, Mode=TwoWay}" />
+        <CheckBox x:Name="_hideMacOSAppMenu"
+                  Content="Hide in-app main menu on macOS"
+                  Checked="OnHideMacOSAppMenuChanged"
+                  Unchecked="OnHideMacOSAppMenuChanged" />
       </StackPanel>
     </Border>
 
