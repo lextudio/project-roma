@@ -1,6 +1,8 @@
 #if DEBUG
 using System;
 using System.Linq;
+using System.Reflection.Metadata;
+using System.Reflection.Metadata.Ecma335;
 using System.Threading;
 
 using LeXtudio.DevFlow.Agent.Core;
@@ -155,6 +157,116 @@ public sealed partial class MainPage
         return $"{{\"built\":true,\"presetCount\":{dialog.PresetCount}}}";
     });
 
+    // Opens an assembly if needed, selects a metadata table node, and reports the live DataGrid
+    // produced by the real ILSpy MetadataTableTreeNode.View() -> Helpers.PrepareDataGrid path.
+    [DevFlowAction("roma.probe.metadata-open-table", Description = "PROBE: open/select metadata table; returns DataGrid snapshot JSON.")]
+    public static string ProbeMetadataOpenTable(string assemblyPath, string tableName) => RunOnUi(page =>
+    {
+        if (!page._assemblyContext.AssemblyList.GetAssemblies()
+                .Select(a => a.GetMetadataFileOrNull())
+                .Any(f => f is not null && string.Equals(f.FileName, assemblyPath, StringComparison.OrdinalIgnoreCase)))
+        {
+            page._assemblyContext.AssemblyList.OpenAssembly(assemblyPath);
+        }
+
+        if (!Enum.TryParse<TableIndex>(tableName, ignoreCase: true, out var table))
+            return Snapshot(page, error: $"unknown metadata table '{tableName}'");
+
+        var target = page.FindNode(page._assemblyContext.Root, node =>
+            node is ICSharpCode.ILSpy.Metadata.MetadataTableTreeNode tableNode
+            && tableNode.Kind == table);
+        if (target is null)
+            return Snapshot(page, error: $"metadata table '{table}' not found");
+
+        page.OnTreeNodeSelected(target);
+        return MetadataGridSnapshot(page, target.Text?.ToString(), table.ToString());
+    });
+
+    [DevFlowAction("roma.probe.metadata-header-row-details", Description = "PROBE: open PE header details; returns row-details DataGrid snapshot JSON.")]
+    public static string ProbeMetadataHeaderRowDetails(string assemblyPath, string headerName) => RunOnUi(page =>
+    {
+        if (!page._assemblyContext.AssemblyList.GetAssemblies()
+                .Select(a => a.GetMetadataFileOrNull())
+                .Any(f => f is not null && string.Equals(f.FileName, assemblyPath, StringComparison.OrdinalIgnoreCase)))
+        {
+            page._assemblyContext.AssemblyList.OpenAssembly(assemblyPath);
+        }
+
+        string expectedMember = headerName.Equals("Optional Header", StringComparison.OrdinalIgnoreCase)
+            ? "DLL Characteristics"
+            : "Characteristics";
+
+        var target = page.FindNode(page._assemblyContext.Root, node =>
+            string.Equals(node.Text?.ToString(), headerName, StringComparison.OrdinalIgnoreCase));
+        if (target is null)
+            return Snapshot(page, error: $"metadata header '{headerName}' not found");
+
+        page.OnTreeNodeSelected(target);
+
+        var grid = page._nodeContent?.Content as System.Windows.Controls.DataGrid;
+        if (grid is null)
+            return HeaderDetailsSnapshot(page, headerName, expectedMember, null, null, null, null, "header did not render a DataGrid");
+
+        var item = grid.Items.Cast<object?>().FirstOrDefault(x =>
+            string.Equals(ReadStringProperty(x, "Member"), expectedMember, StringComparison.Ordinal));
+        if (item is null)
+            return HeaderDetailsSnapshot(page, headerName, expectedMember, grid, null, null, null, "details item not found");
+
+        grid.SelectedItem = item;
+        grid.SetDetailsVisibilityForItem(item, Microsoft.UI.Xaml.Visibility.Visible);
+
+        var selector = grid.RowDetailsTemplateSelector;
+        var template = selector?.SelectTemplate(item, grid);
+        Microsoft.UI.Xaml.FrameworkElement? detailsElement = null;
+        if (template is System.Windows.Controls.IWpfTemplateBridge bridge)
+        {
+            detailsElement = bridge.LoadContent(item);
+        }
+
+        var detailsGrid = detailsElement as System.Windows.Controls.DataGrid;
+        return HeaderDetailsSnapshot(page, headerName, expectedMember, grid, selector, template, detailsGrid, null);
+    });
+
+    [DevFlowAction("roma.probe.metadata-custom-debug-row-details", Description = "PROBE: open CustomDebugInformation and materialize first row details.")]
+    public static string ProbeMetadataCustomDebugRowDetails(string assemblyPath) => RunOnUi(page =>
+    {
+        if (!page._assemblyContext.AssemblyList.GetAssemblies()
+                .Select(a => a.GetMetadataFileOrNull())
+                .Any(f => f is not null && string.Equals(f.FileName, assemblyPath, StringComparison.OrdinalIgnoreCase)))
+        {
+            page._assemblyContext.AssemblyList.OpenAssembly(assemblyPath);
+        }
+
+        var target = page.FindNode(page._assemblyContext.Root, node =>
+            node is ICSharpCode.ILSpy.Metadata.MetadataTableTreeNode tableNode
+            && tableNode.Kind == TableIndex.CustomDebugInformation);
+        if (target is null)
+            return CustomDebugDetailsSnapshot(page, null, null, null, null, null, "CustomDebugInformation table not found");
+
+        page.OnTreeNodeSelected(target);
+
+        var grid = page._nodeContent?.Content as System.Windows.Controls.DataGrid;
+        if (grid is null)
+            return CustomDebugDetailsSnapshot(page, null, null, null, null, null, "CustomDebugInformation did not render a DataGrid");
+
+        var item = grid.Items.Cast<object?>().FirstOrDefault(x => ReadObjectProperty(x, "RowDetails") is not null);
+        if (item is null)
+            return CustomDebugDetailsSnapshot(page, grid, null, null, null, null, "no CustomDebugInformation row with details");
+
+        grid.SelectedItem = item;
+        grid.SetDetailsVisibilityForItem(item, Microsoft.UI.Xaml.Visibility.Visible);
+
+        var selector = grid.RowDetailsTemplateSelector;
+        var template = selector?.SelectTemplate(item, grid);
+        Microsoft.UI.Xaml.FrameworkElement? detailsElement = null;
+        if (template is System.Windows.Controls.IWpfTemplateBridge bridge)
+        {
+            detailsElement = bridge.LoadContent(item);
+        }
+
+        return CustomDebugDetailsSnapshot(page, grid, selector, template, detailsElement, item, null);
+    });
+
     // ---- helpers ----
 
     static string RunOnUi(Func<MainPage, string> body)
@@ -201,6 +313,111 @@ public sealed partial class MainPage
         if (error is not null) sb.Append(',').Append($"\"error\":{Json(error)}");
         sb.Append('}');
         return sb.ToString();
+    }
+
+    static string MetadataGridSnapshot(MainPage page, string? nodeText, string tableName)
+    {
+        var grid = page._nodeContent?.Content as System.Windows.Controls.DataGrid;
+        grid?.UpdateLayout();
+        var headers = grid is null
+            ? ""
+            : string.Join(",", grid.Columns.Cast<System.Windows.Controls.DataGridColumn>()
+                .Select(c => Json(c.Header?.ToString())));
+        var autoFilter = grid is not null && DataGridExtensions.DataGridFilter.GetIsAutoFilterEnabled(grid);
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append('{');
+        sb.Append($"\"table\":{Json(tableName)},");
+        sb.Append($"\"nodeText\":{Json(nodeText)},");
+        sb.Append($"\"documentTitle\":{Json(page._activeModel?.Title)},");
+        sb.Append($"\"contentType\":{Json(page._nodeContent?.Content?.GetType().FullName)},");
+        sb.Append($"\"hasGrid\":{(grid is null ? "false" : "true")},");
+        sb.Append($"\"rows\":{grid?.Items.Count ?? 0},");
+        sb.Append($"\"columns\":{grid?.Columns.Count ?? 0},");
+        sb.Append($"\"autoGenerateColumns\":{(grid?.AutoGenerateColumns == true ? "true" : "false")},");
+        sb.Append($"\"autoFilterEnabled\":{(autoFilter ? "true" : "false")},");
+        sb.Append($"\"headers\":[{headers}]");
+        sb.Append('}');
+        return sb.ToString();
+    }
+
+    static string HeaderDetailsSnapshot(
+        MainPage page,
+        string headerName,
+        string memberName,
+        System.Windows.Controls.DataGrid? grid,
+        Microsoft.UI.Xaml.Controls.DataTemplateSelector? selector,
+        Microsoft.UI.Xaml.DataTemplate? template,
+        System.Windows.Controls.DataGrid? detailsGrid,
+        string? error)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append('{');
+        sb.Append($"\"header\":{Json(headerName)},");
+        sb.Append($"\"member\":{Json(memberName)},");
+        sb.Append($"\"documentTitle\":{Json(page._activeModel?.Title)},");
+        sb.Append($"\"contentType\":{Json(page._nodeContent?.Content?.GetType().FullName)},");
+        sb.Append($"\"hasGrid\":{(grid is null ? "false" : "true")},");
+        sb.Append($"\"rows\":{grid?.Items.Count ?? 0},");
+        sb.Append($"\"columns\":{grid?.Columns.Count ?? 0},");
+        sb.Append($"\"rowDetailsMode\":{Json(grid?.RowDetailsVisibilityMode.ToString())},");
+        sb.Append($"\"hasSelector\":{(selector is null ? "false" : "true")},");
+        sb.Append($"\"selectorType\":{Json(selector?.GetType().FullName)},");
+        sb.Append($"\"templateType\":{Json(template?.GetType().FullName)},");
+        sb.Append($"\"detailsGrid\":{(detailsGrid is null ? "false" : "true")},");
+        sb.Append($"\"detailsRows\":{detailsGrid?.Items.Count ?? 0},");
+        sb.Append($"\"detailsColumns\":{detailsGrid?.Columns.Count ?? 0}");
+        if (error is not null) sb.Append(',').Append($"\"error\":{Json(error)}");
+        sb.Append('}');
+        return sb.ToString();
+    }
+
+    static string CustomDebugDetailsSnapshot(
+        MainPage page,
+        System.Windows.Controls.DataGrid? grid,
+        Microsoft.UI.Xaml.Controls.DataTemplateSelector? selector,
+        Microsoft.UI.Xaml.DataTemplate? template,
+        Microsoft.UI.Xaml.FrameworkElement? detailsElement,
+        object? item,
+        string? error)
+    {
+        var detailsGrid = detailsElement as System.Windows.Controls.DataGrid;
+        var textBox = detailsElement as Microsoft.UI.Xaml.Controls.TextBox;
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append('{');
+        sb.Append($"\"table\":\"CustomDebugInformation\",");
+        sb.Append($"\"documentTitle\":{Json(page._activeModel?.Title)},");
+        sb.Append($"\"contentType\":{Json(page._nodeContent?.Content?.GetType().FullName)},");
+        sb.Append($"\"hasGrid\":{(grid is null ? "false" : "true")},");
+        sb.Append($"\"rows\":{grid?.Items.Count ?? 0},");
+        sb.Append($"\"columns\":{grid?.Columns.Count ?? 0},");
+        sb.Append($"\"rowKind\":{Json(ReadStringProperty(item, "Kind"))},");
+        sb.Append($"\"hasSelector\":{(selector is null ? "false" : "true")},");
+        sb.Append($"\"selectorType\":{Json(selector?.GetType().FullName)},");
+        sb.Append($"\"templateType\":{Json(template?.GetType().FullName)},");
+        sb.Append($"\"detailsElementType\":{Json(detailsElement?.GetType().FullName)},");
+        sb.Append($"\"detailsGrid\":{(detailsGrid is null ? "false" : "true")},");
+        sb.Append($"\"detailsRows\":{detailsGrid?.Items.Count ?? 0},");
+        sb.Append($"\"detailsColumns\":{detailsGrid?.Columns.Count ?? 0},");
+        sb.Append($"\"detailsTextLength\":{textBox?.Text?.Length ?? 0}");
+        if (error is not null) sb.Append(',').Append($"\"error\":{Json(error)}");
+        sb.Append('}');
+        return sb.ToString();
+    }
+
+    static string? ReadStringProperty(object? item, string propertyName)
+        => ReadObjectProperty(item, propertyName)?.ToString();
+
+    static object? ReadObjectProperty(object? item, string propertyName)
+    {
+        if (item is null)
+            return null;
+
+        var property = item.GetType().GetProperty(
+            propertyName,
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
+        return property?.GetValue(item);
     }
 
     static int ParseDocumentLength(string? snapshot)

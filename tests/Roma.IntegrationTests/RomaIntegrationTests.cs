@@ -199,4 +199,66 @@ public sealed class RomaIntegrationTests
         var after = await _app.PollAsync("roma.probe.state", s => DocLength(s) > 0 && Title(s) != Title(before));
         Assert.NotEqual(Title(before), Title(after));
     }
+
+    [Fact]
+    public async Task MetadataTable_RendersDataGrid()
+    {
+        await _app.InvokeAsync("roma.probe.clear");
+        var assemblyPath = typeof(System.Net.Http.HttpClient).Assembly.Location;
+
+        var state = await _app.InvokeAsync("roma.probe.metadata-open-table", assemblyPath, "TypeDef");
+
+        Assert.Equal("TypeDef", state.GetProperty("table").GetString());
+        var raw = state.ToString();
+        Assert.True(state.GetProperty("hasGrid").GetBoolean(), $"metadata table View() should render a DataGrid: {raw}");
+        Assert.True(state.GetProperty("rows").GetInt32() > 0, $"TypeDef table should contain rows: {raw}");
+        Assert.True(state.GetProperty("columns").GetInt32() > 0, $"TypeDef table should generate columns: {raw}");
+        Assert.True(state.GetProperty("autoGenerateColumns").GetBoolean(), $"metadata tables should use AutoGenerateColumns: {raw}");
+        Assert.True(state.GetProperty("autoFilterEnabled").GetBoolean(), $"metadata tables should enable DataGridExtensions auto-filter: {raw}");
+        Assert.NotEmpty(state.GetProperty("headers").EnumerateArray());
+    }
+
+    [Fact]
+    public async Task MetadataHeader_RowDetailsRendersNestedDataGrid()
+    {
+        await _app.InvokeAsync("roma.probe.clear");
+        var assemblyPath = typeof(System.Net.Http.HttpClient).Assembly.Location;
+
+        var state = await _app.InvokeAsync("roma.probe.metadata-header-row-details", assemblyPath, "COFF Header");
+
+        var raw = state.ToString();
+        Assert.Equal("COFF Header", state.GetProperty("header").GetString());
+        Assert.Equal("Characteristics", state.GetProperty("member").GetString());
+        Assert.True(state.GetProperty("hasGrid").GetBoolean(), $"header should render a DataGrid: {raw}");
+        Assert.True(state.GetProperty("rows").GetInt32() > 0, $"header grid should contain rows: {raw}");
+        Assert.True(state.GetProperty("columns").GetInt32() > 0, $"header grid should contain columns: {raw}");
+        Assert.True(state.GetProperty("hasSelector").GetBoolean(), $"row-details selector should be active: {raw}");
+        Assert.Contains("CharacteristicsDataTemplateSelector", state.GetProperty("selectorType").GetString());
+        Assert.Contains("ShimDataTemplate", state.GetProperty("templateType").GetString());
+        Assert.True(state.GetProperty("detailsGrid").GetBoolean(), $"row details should render nested DataGrid: {raw}");
+        Assert.True(state.GetProperty("detailsRows").GetInt32() > 0, $"nested details grid should contain rows: {raw}");
+        Assert.True(state.GetProperty("detailsColumns").GetInt32() > 0, $"nested details grid should contain columns: {raw}");
+    }
+
+    [Fact]
+    public async Task MetadataCustomDebugInformation_RowDetailsRenders()
+    {
+        await _app.InvokeAsync("roma.probe.clear");
+        var assemblyPath = typeof(RomaIntegrationTests).Assembly.Location;
+
+        var state = await _app.InvokeAsync("roma.probe.metadata-custom-debug-row-details", assemblyPath);
+
+        var raw = state.ToString();
+        Assert.False(state.TryGetProperty("error", out _), $"custom debug row details probe failed: {raw}");
+        Assert.Equal("CustomDebugInformation", state.GetProperty("table").GetString());
+        Assert.True(state.GetProperty("hasGrid").GetBoolean(), $"CustomDebugInformation should render a DataGrid: {raw}");
+        Assert.True(state.GetProperty("rows").GetInt32() > 0, $"CustomDebugInformation should contain rows: {raw}");
+        Assert.True(state.GetProperty("hasSelector").GetBoolean(), $"row-details selector should be active: {raw}");
+        Assert.Contains("CustomDebugInformationDetailsTemplateSelector", state.GetProperty("selectorType").GetString());
+        Assert.Contains("ShimDataTemplate", state.GetProperty("templateType").GetString());
+
+        var renderedGrid = state.GetProperty("detailsGrid").GetBoolean();
+        var renderedText = state.GetProperty("detailsTextLength").GetInt32() > 0;
+        Assert.True(renderedGrid || renderedText, $"row details should render a nested grid or text blob: {raw}");
+    }
 }
