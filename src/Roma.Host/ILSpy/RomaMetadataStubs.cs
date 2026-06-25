@@ -26,172 +26,175 @@ namespace ICSharpCode.ILSpy.Metadata
         private static MetadataTableViews? _instance;
         public static MetadataTableViews Instance => _instance ??= new MetadataTableViews();
 
+        public static WpfXamlResourceTranslationReport? LastTranslationReport { get; private set; }
+
         public MetadataTableViews()
         {
-            foreach (var (key, value) in BuildResources())
-                this[key] = value;
+            WpfResourceFactory.Populate(this, BuildResources());
         }
 
-        private static IEnumerable<(string Key, object Value)> BuildResources()
+        private static WpfResourceSpec[] BuildResources()
         {
-            // ── Filter templates ──────────────────────────────────────────────────────
-            yield return ("DefaultFilter",
-                new DataGridExtensions.FilterControlTemplate(DataGridExtensions.FilterKind.Text));
-            yield return ("HexFilter",
-                new DataGridExtensions.FilterControlTemplate(DataGridExtensions.FilterKind.Hex));
+            var fallbackResources = new[]
+            {
+                WpfResourceSpec.DataTemplate("CustomDebugInformationDetailsDataGrid", BuildCustomDebugInfoDataGrid),
+                WpfResourceSpec.DataTemplate("CustomDebugInformationDetailsTextBlob", BuildCustomDebugInfoTextBlob),
+                WpfResourceSpec.DataTemplate("HeaderFlagsDetailsDataGrid", BuildHeaderFlagsDataGrid)
+            };
 
-            yield return ("AssemblyFlagsFilter",
-                Flags(typeof(AssemblyFlags)));
-            yield return ("AssemblyHashAlgorithmFilter",
-                Flags(typeof(AssemblyHashAlgorithm)));
-            yield return ("MethodAttributesFilter",
-                Flags(typeof(MethodAttributes)));
-            yield return ("MethodImplAttributesFilter",
-                Flags(typeof(MethodImplAttributes)));
-            yield return ("MethodSemanticsAttributesFilter",
-                Flags(typeof(MethodSemanticsAttributes)));
-            yield return ("TypeAttributesFilter",
-                Flags(typeof(TypeAttributes)));
-            yield return ("PropertyAttributesFilter",
-                Flags(typeof(PropertyAttributes)));
-            yield return ("EventAttributesFilter",
-                Flags(typeof(EventAttributes)));
-            yield return ("FieldAttributesFilter",
-                Flags(typeof(FieldAttributes)));
-            yield return ("ManifestResourceAttributesFilter",
-                Flags(typeof(ManifestResourceAttributes)));
-            yield return ("GenericParameterAttributesFilter",
-                Flags(typeof(GenericParameterAttributes)));
-            yield return ("PInvokeAttributesFilter",
-                Flags(typeof(Mono.Cecil.PInvokeAttributes)));
+            var xamlPath = Path.Combine(AppContext.BaseDirectory, "ILSpy", "Metadata", "MetadataTableViews.xaml");
+            if (File.Exists(xamlPath))
+            {
+                var resources = WpfXamlResourceTranslator.TranslateResourceDictionary(
+                    File.ReadAllText(xamlPath),
+                    ResolveMetadataXamlType,
+                    out var report,
+                    fallbackResources);
+                LastTranslationReport = report;
+                return resources;
+            }
 
-            // ── DataGridCellStyle ────────────────────────────────────────────────────
-            // Mirrors the WPF style: BorderThickness=0, Padding=2, VerticalContentAlignment=Center.
-            // The ControlTemplate setter in the WPF original is skipped — the shim cell builds its
-            // own visual tree and applying a WinUI ControlTemplate would break it.
-            var cellStyle = new Microsoft.UI.Xaml.Style(typeof(DataGridCell));
-            cellStyle.Setters.Add(new Microsoft.UI.Xaml.Setter(
-                Microsoft.UI.Xaml.Controls.Control.BorderThicknessProperty,
-                new Microsoft.UI.Xaml.Thickness(0)));
-            cellStyle.Setters.Add(new Microsoft.UI.Xaml.Setter(
-                Microsoft.UI.Xaml.Controls.Control.PaddingProperty,
-                new Microsoft.UI.Xaml.Thickness(2)));
-            cellStyle.Setters.Add(new Microsoft.UI.Xaml.Setter(
-                Microsoft.UI.Xaml.Controls.Control.VerticalContentAlignmentProperty,
-                Microsoft.UI.Xaml.VerticalAlignment.Center));
-            yield return ("DataGridCellStyle", cellStyle);
-
-            // ── ItemContainerStyle ───────────────────────────────────────────────────
-            var itemStyle = new Microsoft.UI.Xaml.Style(typeof(ListViewItem));
-            itemStyle.Setters.Add(new Microsoft.UI.Xaml.Setter(
-                Microsoft.UI.Xaml.Controls.Control.HorizontalContentAlignmentProperty,
-                Microsoft.UI.Xaml.HorizontalAlignment.Stretch));
-            yield return ("ItemContainerStyle", itemStyle);
-
-            // ── Row-details DataTemplates ────────────────────────────────────────────
-            // These replace the WPF DataTemplates that used {Binding RowDetails}.
-            // ShimDataTemplate carries a C# factory that BuildRowDetails invokes directly,
-            // bypassing WinUI's ContentTemplate mechanism (which cannot handle WPF bindings).
-
-            yield return ("CustomDebugInformationDetailsDataGrid",
-                new System.Windows.Controls.ShimDataTemplate(BuildCustomDebugInfoDataGrid));
-
-            yield return ("CustomDebugInformationDetailsTextBlob",
-                new System.Windows.Controls.ShimDataTemplate(BuildCustomDebugInfoTextBlob));
-
-            yield return ("HeaderFlagsDetailsDataGrid",
-                new System.Windows.Controls.ShimDataTemplate(BuildHeaderFlagsDataGrid));
+            LastTranslationReport = null;
+            return
+            [
+                WpfResourceSpec.TextFilter("DefaultFilter"),
+                WpfResourceSpec.HexFilter("HexFilter"),
+                WpfResourceSpec.FlagsFilter("AssemblyFlagsFilter", typeof(AssemblyFlags)),
+                WpfResourceSpec.FlagsFilter("AssemblyHashAlgorithmFilter", typeof(AssemblyHashAlgorithm)),
+                WpfResourceSpec.FlagsFilter("MethodAttributesFilter", typeof(MethodAttributes)),
+                WpfResourceSpec.FlagsFilter("MethodImplAttributesFilter", typeof(MethodImplAttributes)),
+                WpfResourceSpec.FlagsFilter("MethodSemanticsAttributesFilter", typeof(MethodSemanticsAttributes)),
+                WpfResourceSpec.FlagsFilter("TypeAttributesFilter", typeof(TypeAttributes)),
+                WpfResourceSpec.FlagsFilter("PropertyAttributesFilter", typeof(PropertyAttributes)),
+                WpfResourceSpec.FlagsFilter("EventAttributesFilter", typeof(EventAttributes)),
+                WpfResourceSpec.FlagsFilter("FieldAttributesFilter", typeof(FieldAttributes)),
+                WpfResourceSpec.FlagsFilter("ManifestResourceAttributesFilter", typeof(ManifestResourceAttributes)),
+                WpfResourceSpec.FlagsFilter("GenericParameterAttributesFilter", typeof(GenericParameterAttributes)),
+                WpfResourceSpec.FlagsFilter("PInvokeAttributesFilter", typeof(Mono.Cecil.PInvokeAttributes)),
+                WpfResourceSpec.Style(
+                    "DataGridCellStyle",
+                    typeof(DataGridCell),
+                    WpfStyleFactory.Set(
+                        Microsoft.UI.Xaml.Controls.Control.BorderThicknessProperty,
+                        new Microsoft.UI.Xaml.Thickness(0)),
+                    WpfStyleFactory.Set(
+                        Microsoft.UI.Xaml.Controls.Control.PaddingProperty,
+                        new Microsoft.UI.Xaml.Thickness(2)),
+                    WpfStyleFactory.Set(
+                        Microsoft.UI.Xaml.Controls.Control.VerticalContentAlignmentProperty,
+                        Microsoft.UI.Xaml.VerticalAlignment.Center)),
+                WpfResourceSpec.Style(
+                    "ItemContainerStyle",
+                    typeof(ListViewItem),
+                    WpfStyleFactory.Set(
+                        Microsoft.UI.Xaml.Controls.Control.HorizontalContentAlignmentProperty,
+                        Microsoft.UI.Xaml.HorizontalAlignment.Stretch)),
+                .. fallbackResources
+            ];
         }
 
-        // Helper for flags filter templates.
-        private static DataGridExtensions.FilterControlTemplate Flags(Type t)
-            => new(DataGridExtensions.FilterKind.Flags, t);
+        private static Type? ResolveMetadataXamlType(string name)
+        {
+            return name switch
+            {
+                "DataGridCell" => typeof(DataGridCell),
+                "ListViewItem" => typeof(ListViewItem),
+                "srm:AssemblyFlags" => typeof(AssemblyFlags),
+                "srm:AssemblyHashAlgorithm" => typeof(AssemblyHashAlgorithm),
+                "reflection:MethodAttributes" => typeof(MethodAttributes),
+                "reflection:MethodImplAttributes" => typeof(MethodImplAttributes),
+                "srm:MethodSemanticsAttributes" => typeof(MethodSemanticsAttributes),
+                "reflection:TypeAttributes" => typeof(TypeAttributes),
+                "reflection:PropertyAttributes" => typeof(PropertyAttributes),
+                "reflection:EventAttributes" => typeof(EventAttributes),
+                "reflection:FieldAttributes" => typeof(FieldAttributes),
+                "srm:ManifestResourceAttributes" => typeof(ManifestResourceAttributes),
+                "reflection:GenericParameterAttributes" => typeof(GenericParameterAttributes),
+                "cecil:PInvokeAttributes" => typeof(Mono.Cecil.PInvokeAttributes),
+                _ => null
+            };
+        }
 
         // ── Factory: nested DataGrid for structured debug info ────────────────────────
-        private static Microsoft.UI.Xaml.FrameworkElement? BuildCustomDebugInfoDataGrid(object? item)
+        private static Microsoft.UI.Xaml.FrameworkElement? BuildCustomDebugInfoDataGrid(
+            object? item,
+            Microsoft.UI.Xaml.DependencyObject? templatedParent)
         {
-            if (item is not CustomDebugInformationTableTreeNode.CustomDebugInformationEntry entry)
-                return null;
-            var rowDetails = entry.RowDetails as System.Collections.IEnumerable;
+            var rowDetails = System.Windows.Data.BindingEvaluator.Evaluate(
+                item,
+                new Binding("RowDetails")) as System.Collections.IEnumerable;
             if (rowDetails == null)
                 return null;
 
-            var grid = new DataGrid
-            {
-                AutoGenerateColumns = true,
-                CanUserAddRows = false,
-                CanUserDeleteRows = false,
-                CanUserReorderColumns = false,
-                HeadersVisibility = DataGridHeadersVisibility.Column,
-                IsReadOnly = true,
-                GridLinesVisibility = DataGridGridLinesVisibility.None,
-                SelectionMode = DataGridSelectionMode.Single,
-                SelectionUnit = DataGridSelectionUnit.FullRow,
-                MaxHeight = 250,
-            };
-
-            grid.AutoGeneratingColumn += Helpers.View_AutoGeneratingColumn;
-            grid.AutoGeneratedColumns += Helpers.View_AutoGeneratedColumns;
-            grid.ItemsSource = rowDetails;
-            return grid;
+            return WpfTemplateFactory.Create<DataGrid>(
+                item,
+                grid =>
+                {
+                    grid.AutoGenerateColumns = true;
+                    grid.CanUserAddRows = false;
+                    grid.CanUserDeleteRows = false;
+                    grid.CanUserReorderColumns = false;
+                    grid.HeadersVisibility = DataGridHeadersVisibility.Column;
+                    grid.IsReadOnly = true;
+                    grid.GridLinesVisibility = DataGridGridLinesVisibility.None;
+                    grid.SelectionMode = DataGridSelectionMode.Single;
+                    grid.SelectionUnit = DataGridSelectionUnit.FullRow;
+                    grid.MaxHeight = 250;
+                    grid.AutoGeneratingColumn += Helpers.View_AutoGeneratingColumn;
+                    grid.AutoGeneratedColumns += Helpers.View_AutoGeneratedColumns;
+                },
+                BindingAssignment.To(nameof(DataGrid.ItemsSource), new Binding("RowDetails")));
         }
 
         // ── Factory: read-only TextBox for blob debug info ────────────────────────────
-        private static Microsoft.UI.Xaml.FrameworkElement? BuildCustomDebugInfoTextBlob(object? item)
+        private static Microsoft.UI.Xaml.FrameworkElement? BuildCustomDebugInfoTextBlob(
+            object? item,
+            Microsoft.UI.Xaml.DependencyObject? templatedParent)
         {
-            if (item is not CustomDebugInformationTableTreeNode.CustomDebugInformationEntry entry)
-                return null;
-            var text = entry.RowDetails?.ToString() ?? string.Empty;
-
-            return new Microsoft.UI.Xaml.Controls.TextBox
-            {
-                IsReadOnly = true,
-                TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap,
-                Text = text,
-                MinWidth = 800,
-                MaxWidth = 800,
-            };
+            return WpfTemplateFactory.Create<Microsoft.UI.Xaml.Controls.TextBox>(
+                item,
+                textBox =>
+                {
+                    textBox.IsReadOnly = true;
+                    textBox.TextWrapping = Microsoft.UI.Xaml.TextWrapping.Wrap;
+                    textBox.MinWidth = 800;
+                    textBox.MaxWidth = 800;
+                },
+                BindingAssignment.To(
+                    nameof(Microsoft.UI.Xaml.Controls.TextBox.Text),
+                    new Binding("RowDetails") { TargetNullValue = string.Empty }));
         }
 
         // ── Factory: flags DataGrid for PE-header fields ──────────────────────────────
-        private static Microsoft.UI.Xaml.FrameworkElement? BuildHeaderFlagsDataGrid(object? item)
+        private static Microsoft.UI.Xaml.FrameworkElement? BuildHeaderFlagsDataGrid(
+            object? item,
+            Microsoft.UI.Xaml.DependencyObject? templatedParent)
         {
-            // item is a MetadataTreeNode.Entry; RowDetails is IList<MetadataTreeNode.BitEntry>.
-            // Both are internal, so access via reflection is needed only if we can't use them
-            // directly — but since this file is in the same assembly, we can use them directly.
-            var entry = item as Entry;
-            var rowDetails = entry?.RowDetails;
+            var rowDetails = System.Windows.Data.BindingEvaluator.Evaluate(
+                item,
+                new Binding("RowDetails")) as System.Collections.IEnumerable;
             if (rowDetails == null)
                 return null;
 
-            var grid = new DataGrid
-            {
-                CanUserAddRows = false,
-                CanUserDeleteRows = false,
-                CanUserReorderColumns = false,
-                HeadersVisibility = DataGridHeadersVisibility.None,
-                IsReadOnly = true,
-                GridLinesVisibility = DataGridGridLinesVisibility.None,
-                SelectionMode = DataGridSelectionMode.Single,
-                SelectionUnit = DataGridSelectionUnit.FullRow,
-                AutoGenerateColumns = false,
-            };
-
-            grid.Columns.Add(new DataGridCheckBoxColumn
-            {
-                Header = "Value",
-                Binding = new Binding("Value"),
-                IsReadOnly = true,
-            });
-            grid.Columns.Add(new DataGridTextColumn
-            {
-                Header = "Meaning",
-                Binding = new Binding("Meaning"),
-                IsReadOnly = true,
-            });
-
-            grid.ItemsSource = rowDetails;
-            return grid;
+            return WpfTemplateFactory.Create<DataGrid>(
+                item,
+                grid =>
+                {
+                    grid.CanUserAddRows = false;
+                    grid.CanUserDeleteRows = false;
+                    grid.CanUserReorderColumns = false;
+                    grid.HeadersVisibility = DataGridHeadersVisibility.None;
+                    grid.IsReadOnly = true;
+                    grid.GridLinesVisibility = DataGridGridLinesVisibility.None;
+                    grid.SelectionMode = DataGridSelectionMode.Single;
+                    grid.SelectionUnit = DataGridSelectionUnit.FullRow;
+                    grid.AutoGenerateColumns = false;
+                    WpfTemplateFactory.ApplyColumns(
+                        grid,
+                        DataGridColumnSpec.CheckBox("Value", new Binding("Value")),
+                        DataGridColumnSpec.Text("Meaning", new Binding("Meaning")));
+                },
+                BindingAssignment.To(nameof(DataGrid.ItemsSource), new Binding("RowDetails")));
         }
     }
 }

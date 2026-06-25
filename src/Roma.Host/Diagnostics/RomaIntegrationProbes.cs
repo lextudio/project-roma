@@ -208,7 +208,7 @@ public sealed partial class MainPage
             return HeaderDetailsSnapshot(page, headerName, expectedMember, null, null, null, null, "header did not render a DataGrid");
 
         var item = grid.Items.Cast<object?>().FirstOrDefault(x =>
-            string.Equals(ReadStringProperty(x, "Member"), expectedMember, StringComparison.Ordinal));
+            string.Equals(ReadBindingString(x, "Member"), expectedMember, StringComparison.Ordinal));
         if (item is null)
             return HeaderDetailsSnapshot(page, headerName, expectedMember, grid, null, null, null, "details item not found");
 
@@ -220,7 +220,7 @@ public sealed partial class MainPage
         Microsoft.UI.Xaml.FrameworkElement? detailsElement = null;
         if (template is System.Windows.Controls.IWpfTemplateBridge bridge)
         {
-            detailsElement = bridge.LoadContent(item);
+            detailsElement = bridge.LoadContent(item, grid);
         }
 
         var detailsGrid = detailsElement as System.Windows.Controls.DataGrid;
@@ -249,7 +249,7 @@ public sealed partial class MainPage
         if (grid is null)
             return CustomDebugDetailsSnapshot(page, null, null, null, null, null, "CustomDebugInformation did not render a DataGrid");
 
-        var item = grid.Items.Cast<object?>().FirstOrDefault(x => ReadObjectProperty(x, "RowDetails") is not null);
+        var item = grid.Items.Cast<object?>().FirstOrDefault(x => ReadBindingValue(x, "RowDetails") is not null);
         if (item is null)
             return CustomDebugDetailsSnapshot(page, grid, null, null, null, null, "no CustomDebugInformation row with details");
 
@@ -261,10 +261,27 @@ public sealed partial class MainPage
         Microsoft.UI.Xaml.FrameworkElement? detailsElement = null;
         if (template is System.Windows.Controls.IWpfTemplateBridge bridge)
         {
-            detailsElement = bridge.LoadContent(item);
+            detailsElement = bridge.LoadContent(item, grid);
         }
 
         return CustomDebugDetailsSnapshot(page, grid, selector, template, detailsElement, item, null);
+    });
+
+    [DevFlowAction("roma.probe.metadata-xaml-resources", Description = "PROBE: report upstream MetadataTableViews.xaml resource translation.")]
+    public static string ProbeMetadataXamlResources() => RunOnUi(page =>
+    {
+        _ = ICSharpCode.ILSpy.Metadata.MetadataTableViews.Instance;
+        var report = ICSharpCode.ILSpy.Metadata.MetadataTableViews.LastTranslationReport;
+        var xamlPath = System.IO.Path.Combine(AppContext.BaseDirectory, "ILSpy", "Metadata", "MetadataTableViews.xaml");
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append('{');
+        sb.Append($"\"xamlPresent\":{(System.IO.File.Exists(xamlPath) ? "true" : "false")},");
+        sb.Append($"\"translated\":[{JsonArray(report?.TranslatedKeys)}],");
+        sb.Append($"\"fallback\":[{JsonArray(report?.FallbackKeys)}],");
+        sb.Append($"\"skipped\":[{JsonArray(report?.SkippedKeys)}]");
+        sb.Append('}');
+        return sb.ToString();
     });
 
     // ---- helpers ----
@@ -281,7 +298,7 @@ public sealed partial class MainPage
             catch (Exception ex) { result = $"{{\"error\":{Json(ex.Message)}}}"; }
             finally { done.Set(); }
         });
-        done.Wait(8000);
+        done.Wait(TimeSpan.FromSeconds(30));
         return result;
     }
 
@@ -392,7 +409,7 @@ public sealed partial class MainPage
         sb.Append($"\"hasGrid\":{(grid is null ? "false" : "true")},");
         sb.Append($"\"rows\":{grid?.Items.Count ?? 0},");
         sb.Append($"\"columns\":{grid?.Columns.Count ?? 0},");
-        sb.Append($"\"rowKind\":{Json(ReadStringProperty(item, "Kind"))},");
+        sb.Append($"\"rowKind\":{Json(ReadBindingString(item, "Kind"))},");
         sb.Append($"\"hasSelector\":{(selector is null ? "false" : "true")},");
         sb.Append($"\"selectorType\":{Json(selector?.GetType().FullName)},");
         sb.Append($"\"templateType\":{Json(template?.GetType().FullName)},");
@@ -406,19 +423,11 @@ public sealed partial class MainPage
         return sb.ToString();
     }
 
-    static string? ReadStringProperty(object? item, string propertyName)
-        => ReadObjectProperty(item, propertyName)?.ToString();
+    static string? ReadBindingString(object? item, string path)
+        => ReadBindingValue(item, path)?.ToString();
 
-    static object? ReadObjectProperty(object? item, string propertyName)
-    {
-        if (item is null)
-            return null;
-
-        var property = item.GetType().GetProperty(
-            propertyName,
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.Public);
-        return property?.GetValue(item);
-    }
+    static object? ReadBindingValue(object? item, string path)
+        => System.Windows.Data.BindingEvaluator.Evaluate(item, new System.Windows.Data.Binding(path));
 
     static int ParseDocumentLength(string? snapshot)
     {
@@ -456,5 +465,8 @@ public sealed partial class MainPage
         sb.Append('"');
         return sb.ToString();
     }
+
+    static string JsonArray(System.Collections.Generic.IEnumerable<string>? values)
+        => values is null ? "" : string.Join(",", values.Select(Json));
 }
 #endif

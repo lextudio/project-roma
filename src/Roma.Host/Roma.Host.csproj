@@ -84,6 +84,9 @@
        that SvgImageSource can load via ms-appx:///ILSpyIcons/xxx.svg. -->
   <ItemGroup>
     <Content Include="ILSpyIcons\*.svg" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\ext\ilspy\ILSpy\Metadata\MetadataTableViews.xaml"
+             Link="ILSpy\Metadata\MetadataTableViews.xaml"
+             CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- ILSpy localized strings: embed the real resx + link the Designer.cs so
