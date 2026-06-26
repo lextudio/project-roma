@@ -299,8 +299,11 @@ public sealed class RomaIntegrationTests
         Assert.Contains("DataGridCellStyle", translated);
         Assert.Contains("DefaultFilter", translated);
         Assert.Contains("CustomDebugInformationDetailsTextBlob", translated);
-        Assert.Contains("CustomDebugInformationDetailsDataGrid", fallback);
-        Assert.Contains("HeaderFlagsDetailsDataGrid", fallback);
+        Assert.Contains("CustomDebugInformationDetailsDataGrid", translated);
+        Assert.Contains("HeaderFlagsDetailsDataGrid", translated);
+        Assert.DoesNotContain("CustomDebugInformationDetailsDataGrid", fallback);
+        Assert.DoesNotContain("CustomDebugInformationDetailsTextBlob", fallback);
+        Assert.DoesNotContain("HeaderFlagsDetailsDataGrid", fallback);
         Assert.Contains("byteWidthConverter", skipped);
     }
 }

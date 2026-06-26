@@ -7,7 +7,7 @@
   -->
   <ItemGroup>
     <PackageVersion Include="LeXtudio.UnoEdit" Version="0.7.5" />
-    <PackageVersion Include="LeXtudio.Windows" Version="0.8.5" />
+    <PackageVersion Include="LeXtudio.Windows" Version="0.8.6" />
     <PackageVersion Include="LeXtudio.RichText" Version="0.7.5" />
     <PackageVersion Include="LeXtudio.UnoDock" Version="0.1.10" />
     <PackageVersion Include="LeXtudio.UnoDock.Themes.VS2013" Version="0.1.9" />
