@@ -235,6 +235,39 @@ public sealed class RomaIntegrationTests
     }
 
     [Fact]
+    public async Task MetadataTable_ColumnAutoSizeExpandsBestFitWidth()
+    {
+        await _app.InvokeAsync("roma.probe.clear");
+        var assemblyPath = typeof(System.Net.Http.HttpClient).Assembly.Location;
+
+        var state = await _app.InvokeAsync("roma.probe.metadata-autosize-column", assemblyPath, "TypeDef", 0);
+
+        var raw = state.ToString();
+        Assert.False(state.TryGetProperty("error", out _), $"metadata auto-size probe failed: {raw}");
+        Assert.True(state.GetProperty("hasGrid").GetBoolean(), $"metadata table should render a DataGrid: {raw}");
+        Assert.True(state.GetProperty("resized").GetBoolean(), $"auto-size should be accepted: {raw}");
+        Assert.True(state.GetProperty("after").GetDouble() > state.GetProperty("before").GetDouble(), $"column should grow to best-fit width: {raw}");
+        Assert.Equal("Pixel", state.GetProperty("widthUnit").GetString());
+    }
+
+    [Fact]
+    public async Task MetadataTable_LeftHeaderEdgeResizesPreviousColumn()
+    {
+        await _app.InvokeAsync("roma.probe.clear");
+        var assemblyPath = typeof(System.Net.Http.HttpClient).Assembly.Location;
+
+        var state = await _app.InvokeAsync("roma.probe.metadata-resize-left-edge", assemblyPath, "TypeDef", 1, 40.0);
+
+        var raw = state.ToString();
+        Assert.False(state.TryGetProperty("error", out _), $"metadata left-edge resize probe failed: {raw}");
+        Assert.True(state.GetProperty("hasGrid").GetBoolean(), $"metadata table should render a DataGrid: {raw}");
+        Assert.Equal(0, state.GetProperty("columnIndex").GetInt32());
+        Assert.True(state.GetProperty("resized").GetBoolean(), $"left edge resize should target the previous column: {raw}");
+        Assert.True(state.GetProperty("after").GetDouble() > state.GetProperty("before").GetDouble(), $"previous column should grow: {raw}");
+        Assert.Equal("Pixel", state.GetProperty("widthUnit").GetString());
+    }
+
+    [Fact]
     public async Task MetadataTable_CopySelectedRowProducesClipboardText()
     {
         await _app.InvokeAsync("roma.probe.clear");

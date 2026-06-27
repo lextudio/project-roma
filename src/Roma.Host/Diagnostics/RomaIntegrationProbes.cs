@@ -266,6 +266,123 @@ public sealed partial class MainPage
         return MetadataResizeSnapshot(grid, columnIndex, resized, before, after, null);
     });
 
+    [DevFlowAction("roma.probe.metadata-autosize-column", Description = "PROBE: auto-size a metadata DataGrid column; returns width snapshot JSON.")]
+    public static string ProbeMetadataAutoSizeColumn(string assemblyPath, string tableName, int columnIndex) => RunOnUi(page =>
+    {
+        if (!page._assemblyContext.AssemblyList.GetAssemblies()
+                .Select(a => a.GetMetadataFileOrNull())
+                .Any(f => f is not null && string.Equals(f.FileName, assemblyPath, StringComparison.OrdinalIgnoreCase)))
+        {
+            page._assemblyContext.AssemblyList.OpenAssembly(assemblyPath);
+        }
+
+        if (!Enum.TryParse<TableIndex>(tableName, ignoreCase: true, out var table))
+            return Snapshot(page, error: $"unknown metadata table '{tableName}'");
+
+        var target = page.FindNode(page._assemblyContext.Root, node =>
+            node is ICSharpCode.ILSpy.Metadata.MetadataTableTreeNode tableNode
+            && tableNode.Kind == table);
+        if (target is null)
+            return Snapshot(page, error: $"metadata table '{table}' not found");
+
+        page.OnTreeNodeSelected(target);
+        var grid = page._nodeContent?.Content as System.Windows.Controls.DataGrid;
+        if (grid is null)
+            return MetadataResizeSnapshot(null, columnIndex, false, 0, 0, "metadata table did not render a DataGrid");
+
+        grid.UpdateLayout();
+        if (columnIndex < 0 || columnIndex >= grid.Columns.Count)
+            return MetadataResizeSnapshot(grid, columnIndex, false, 0, 0, $"column index {columnIndex} out of range");
+
+        var column = grid.Columns[columnIndex];
+        var resize = typeof(System.Windows.Controls.DataGrid).GetMethod(
+            "ShimTryResizeColumn",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        _ = resize?.Invoke(grid, [column, -10_000.0]);
+        grid.UpdateLayout();
+        var before = EffectiveColumnWidth(column);
+
+        var autoSize = typeof(System.Windows.Controls.DataGrid).GetMethod(
+            "ShimTryAutoSizeColumn",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var bestFitMethod = typeof(System.Windows.Controls.DataGrid).GetMethod(
+            "ShimBestFitColumnWidth",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var bestFit = bestFitMethod?.Invoke(grid, [column]) as double? ?? double.NaN;
+        var resized = autoSize?.Invoke(grid, [column]) as bool? == true;
+        grid.UpdateLayout();
+        var after = EffectiveColumnWidth(column);
+        return MetadataResizeSnapshot(grid, columnIndex, resized, before, after, null, bestFit);
+    });
+
+    [DevFlowAction("roma.probe.metadata-resize-left-edge", Description = "PROBE: resize via a metadata header's left edge; returns width snapshot JSON.")]
+    public static string ProbeMetadataResizeLeftEdge(string assemblyPath, string tableName, int headerIndex, double delta) => RunOnUi(page =>
+    {
+        if (!page._assemblyContext.AssemblyList.GetAssemblies()
+                .Select(a => a.GetMetadataFileOrNull())
+                .Any(f => f is not null && string.Equals(f.FileName, assemblyPath, StringComparison.OrdinalIgnoreCase)))
+        {
+            page._assemblyContext.AssemblyList.OpenAssembly(assemblyPath);
+        }
+
+        if (!Enum.TryParse<TableIndex>(tableName, ignoreCase: true, out var table))
+            return Snapshot(page, error: $"unknown metadata table '{tableName}'");
+
+        var target = page.FindNode(page._assemblyContext.Root, node =>
+            node is ICSharpCode.ILSpy.Metadata.MetadataTableTreeNode tableNode
+            && tableNode.Kind == table);
+        if (target is null)
+            return Snapshot(page, error: $"metadata table '{table}' not found");
+
+        page.OnTreeNodeSelected(target);
+        var grid = page._nodeContent?.Content as System.Windows.Controls.DataGrid;
+        if (grid is null)
+            return MetadataResizeSnapshot(null, headerIndex, false, 0, 0, "metadata table did not render a DataGrid");
+
+        grid.UpdateLayout();
+        var headerCells = typeof(System.Windows.Controls.DataGrid).GetField(
+            "_headerCells",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.GetValue(grid)
+            as System.Collections.IList;
+        if (headerIndex < 0 || headerIndex >= grid.Columns.Count)
+            return MetadataResizeSnapshot(grid, headerIndex, false, 0, 0, $"header index {headerIndex} out of range");
+
+        var header = headerIndex < headerCells?.Count
+            ? headerCells[headerIndex]
+            : null;
+        if (header is null)
+        {
+            var columnForHeader = grid.Columns[headerIndex];
+            var preparedHeader = new System.Windows.Controls.Primitives.DataGridColumnHeader
+            {
+                Content = columnForHeader.Header,
+                Width = Math.Max(40, EffectiveColumnWidth(columnForHeader)),
+            };
+            typeof(System.Windows.Controls.Primitives.DataGridColumnHeader).GetMethod(
+                "PrepareColumnHeader",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+                ?.Invoke(preparedHeader, [columnForHeader.Header, columnForHeader]);
+            header = preparedHeader;
+        }
+
+        var resolve = typeof(System.Windows.Controls.DataGrid).GetMethod(
+            "ResolveHeaderResizeColumn",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var column = resolve?.Invoke(grid, [header, 0.0]) as System.Windows.Controls.DataGridColumn;
+        if (column is null)
+            return MetadataResizeSnapshot(grid, headerIndex, false, 0, 0, "left edge did not resolve a resize column");
+
+        var columnIndex = grid.Columns.IndexOf(column);
+        var before = EffectiveColumnWidth(column);
+        var resize = typeof(System.Windows.Controls.DataGrid).GetMethod(
+            "ShimTryResizeColumn",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var resized = resize?.Invoke(grid, [column, delta]) as bool? == true;
+        grid.UpdateLayout();
+        var after = EffectiveColumnWidth(column);
+        return MetadataResizeSnapshot(grid, columnIndex, resized, before, after, null);
+    });
+
     [DevFlowAction("roma.probe.metadata-copy-selection", Description = "PROBE: copy selected metadata DataGrid row; returns clipboard snapshot JSON.")]
     public static string ProbeMetadataCopySelection(string assemblyPath, string tableName, bool includeHeader) => RunOnUi(page =>
     {
@@ -565,7 +682,8 @@ public sealed partial class MainPage
         bool resized,
         double before,
         double after,
-        string? error)
+        string? error,
+        double? bestFit = null)
     {
         var column = grid is not null && columnIndex >= 0 && columnIndex < grid.Columns.Count
             ? grid.Columns[columnIndex]
@@ -577,13 +695,29 @@ public sealed partial class MainPage
         sb.Append($"\"columnIndex\":{columnIndex},");
         sb.Append($"\"header\":{Json(column?.Header?.ToString())},");
         sb.Append($"\"resized\":{(resized ? "true" : "false")},");
-        sb.Append($"\"before\":{before.ToString(System.Globalization.CultureInfo.InvariantCulture)},");
-        sb.Append($"\"after\":{after.ToString(System.Globalization.CultureInfo.InvariantCulture)},");
+        sb.Append($"\"before\":{JsonNumber(before)},");
+        sb.Append($"\"after\":{JsonNumber(after)},");
+        if (bestFit is not null)
+        {
+            sb.Append($"\"bestFit\":{JsonNumber(bestFit.Value)},");
+        }
+
+        if (column is not null)
+        {
+            sb.Append($"\"minWidth\":{JsonNumber(column.MinWidth)},");
+            sb.Append($"\"maxWidth\":{JsonNumber(column.MaxWidth)},");
+        }
+
         sb.Append($"\"widthUnit\":{Json(column?.Width.UnitType.ToString())}");
         if (error is not null) sb.Append(',').Append($"\"error\":{Json(error)}");
         sb.Append('}');
         return sb.ToString();
     }
+
+    static string JsonNumber(double value)
+        => double.IsFinite(value)
+            ? value.ToString(System.Globalization.CultureInfo.InvariantCulture)
+            : "null";
 
     static double EffectiveColumnWidth(System.Windows.Controls.DataGridColumn column)
     {
