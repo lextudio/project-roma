@@ -19,8 +19,10 @@ public sealed class RomaAppFixture : IAsyncLifetime
     Process? _app;
 
     public string SettingsFilePath { get; } = Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-        "LeXtudio", "Roma", "Roma.ILSpy.xml");
+        Path.GetTempPath(),
+        "Roma.IntegrationTests",
+        Environment.UserName,
+        "Roma.ILSpy.xml");
 
     public string RomaHostProjectPath { get; } = LocateRomaHostProject();
 
@@ -92,6 +94,7 @@ public sealed class RomaAppFixture : IAsyncLifetime
         };
         foreach (var a in new[] { "run", "--project", RomaHostProjectPath, "-f", "net10.0-desktop", "--no-build" })
             psi.ArgumentList.Add(a);
+        psi.Environment["ROMA_SETTINGS_FILE"] = SettingsFilePath;
 
         _app = Process.Start(psi) ?? throw new InvalidOperationException("Failed to start Roma.Host");
         _app.OutputDataReceived += (_, _) => { };   // drain so the pipe never fills

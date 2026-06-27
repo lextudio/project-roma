@@ -120,6 +120,18 @@ namespace ICSharpCode.ILSpy
     {
         public string GetSettingsFilePath()
         {
+            var overridePath = Environment.GetEnvironmentVariable("ROMA_SETTINGS_FILE");
+            if (!string.IsNullOrWhiteSpace(overridePath))
+            {
+                var overrideDirectory = Path.GetDirectoryName(overridePath);
+                if (!string.IsNullOrEmpty(overrideDirectory))
+                {
+                    Directory.CreateDirectory(overrideDirectory);
+                }
+
+                return overridePath;
+            }
+
             var directory = Path.Combine(
                 Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
                 "LeXtudio",

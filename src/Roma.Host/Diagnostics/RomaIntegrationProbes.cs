@@ -302,18 +302,109 @@ public sealed partial class MainPage
         grid.UpdateLayout();
         var before = EffectiveColumnWidth(column);
 
-        var autoSize = typeof(System.Windows.Controls.DataGrid).GetMethod(
-            "ShimTryAutoSizeColumn",
-            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
         var bestFitMethod = typeof(System.Windows.Controls.DataGrid).GetMethod(
             "ShimBestFitColumnWidth",
             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
         var bestFit = bestFitMethod?.Invoke(grid, [column]) as double? ?? double.NaN;
+        var autoSize = typeof(System.Windows.Controls.DataGrid).GetMethod(
+            "ShimTryAutoSizeColumn",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
         var resized = autoSize?.Invoke(grid, [column]) as bool? == true;
         grid.UpdateLayout();
         var after = EffectiveColumnWidth(column);
         return MetadataResizeSnapshot(grid, columnIndex, resized, before, after, null, bestFit);
     });
+
+    [DevFlowAction("roma.probe.metadata-gripper-resize-column", Description = "PROBE: resize a metadata DataGrid column through the realized header gripper.")]
+    public static string ProbeMetadataGripperResizeColumn(string assemblyPath, string tableName, int columnIndex, double delta) => RunOnUi(page =>
+    {
+        var grid = OpenMetadataGrid(page, assemblyPath, tableName, out var error);
+        if (grid is null)
+            return MetadataResizeSnapshot(null, columnIndex, false, 0, 0, error ?? "metadata table did not render a DataGrid");
+
+        grid.UpdateLayout();
+        if (columnIndex < 0 || columnIndex >= grid.Columns.Count)
+            return MetadataResizeSnapshot(grid, columnIndex, false, 0, 0, $"column index {columnIndex} out of range");
+
+        var header = MetadataHeaderAt(grid, columnIndex);
+        if (header is null)
+            return MetadataResizeSnapshot(grid, columnIndex, false, 0, 0, "metadata header was not realized");
+
+        header.ApplyTemplate();
+        var gripper = HeaderGripper(header, "_rightGripper");
+        if (gripper is null)
+            return MetadataResizeSnapshot(grid, columnIndex, false, 0, 0, "right header gripper was not hooked");
+        if (!HeaderGripperHasCursor(gripper))
+            return MetadataResizeSnapshot(grid, columnIndex, false, 0, 0, "right header gripper has no resize cursor");
+
+        var column = grid.Columns[columnIndex];
+        var before = EffectiveColumnWidth(column);
+        gripper.RaiseEvent(new System.Windows.Controls.Primitives.DragStartedEventArgs(0, 0) { Source = gripper });
+        gripper.RaiseEvent(new System.Windows.Controls.Primitives.DragDeltaEventArgs(delta, 0) { Source = gripper });
+        gripper.RaiseEvent(new System.Windows.Controls.Primitives.DragCompletedEventArgs(delta, 0, false) { Source = gripper });
+        grid.UpdateLayout();
+        var after = EffectiveColumnWidth(column);
+        return MetadataResizeSnapshot(grid, columnIndex, after > before, before, after, null);
+    });
+
+    [DevFlowAction("roma.probe.metadata-gripper-autosize-column", Description = "PROBE: auto-size a metadata DataGrid column through the realized header gripper double-click.")]
+    public static string ProbeMetadataGripperAutoSizeColumn(string assemblyPath, string tableName, int columnIndex) => RunOnUi(page =>
+        ProbeMetadataGripperAutoSizeColumnCore(page, assemblyPath, tableName, columnIndex, -10_000.0));
+
+    [DevFlowAction("roma.probe.metadata-gripper-autosize-wide-column", Description = "PROBE: shrink a wide metadata DataGrid column to best-fit through the realized header gripper double-click.")]
+    public static string ProbeMetadataGripperAutoSizeWideColumn(string assemblyPath, string tableName, int columnIndex) => RunOnUi(page =>
+        ProbeMetadataGripperAutoSizeColumnCore(page, assemblyPath, tableName, columnIndex, 10_000.0));
+
+    static string ProbeMetadataGripperAutoSizeColumnCore(MainPage page, string assemblyPath, string tableName, int columnIndex, double initialResizeDelta)
+    {
+        var grid = OpenMetadataGrid(page, assemblyPath, tableName, out var error);
+        if (grid is null)
+            return MetadataResizeSnapshot(null, columnIndex, false, 0, 0, error ?? "metadata table did not render a DataGrid");
+
+        grid.UpdateLayout();
+        if (columnIndex < 0 || columnIndex >= grid.Columns.Count)
+            return MetadataResizeSnapshot(grid, columnIndex, false, 0, 0, $"column index {columnIndex} out of range");
+
+        var column = grid.Columns[columnIndex];
+        var resize = typeof(System.Windows.Controls.DataGrid).GetMethod(
+            "ShimTryResizeColumn",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        _ = resize?.Invoke(grid, [column, initialResizeDelta]);
+        grid.UpdateLayout();
+
+        var header = MetadataHeaderAt(grid, columnIndex);
+        if (header is null)
+            return MetadataResizeSnapshot(grid, columnIndex, false, 0, 0, "metadata header was not realized");
+
+        header.ApplyTemplate();
+        var gripper = HeaderGripper(header, "_rightGripper");
+        if (gripper is null)
+            return MetadataResizeSnapshot(grid, columnIndex, false, 0, 0, "right header gripper was not hooked");
+        if (!HeaderGripperHasCursor(gripper))
+            return MetadataResizeSnapshot(grid, columnIndex, false, 0, 0, "right header gripper has no resize cursor");
+
+        var before = EffectiveColumnWidth(column);
+        var bestFitMethod = typeof(System.Windows.Controls.DataGrid).GetMethod(
+            "ShimBestFitColumnWidth",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var bestFit = bestFitMethod?.Invoke(grid, [column]) as double? ?? double.NaN;
+        var mouseDoubleClickEvent = typeof(System.Windows.Controls.Primitives.Thumb).GetField(
+            "MouseDoubleClickEvent",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)?.GetValue(null)
+            as System.Windows.RoutedEvent;
+        if (mouseDoubleClickEvent is null)
+            return MetadataResizeSnapshot(grid, columnIndex, false, before, before, "Thumb.MouseDoubleClickEvent not found", bestFit);
+
+        gripper.RaiseEvent(new System.Windows.Input.MouseButtonEventArgs
+        {
+            RoutedEvent = mouseDoubleClickEvent,
+            Source = gripper,
+            ClickCount = 2,
+        });
+        grid.UpdateLayout();
+        var after = EffectiveColumnWidth(column);
+        return MetadataResizeSnapshot(grid, columnIndex, Math.Abs(after - before) > 0.5, before, after, null, bestFit);
+    }
 
     [DevFlowAction("roma.probe.metadata-resize-left-edge", Description = "PROBE: resize via a metadata header's left edge; returns width snapshot JSON.")]
     public static string ProbeMetadataResizeLeftEdge(string assemblyPath, string tableName, int headerIndex, double delta) => RunOnUi(page =>
@@ -365,10 +456,10 @@ public sealed partial class MainPage
             header = preparedHeader;
         }
 
-        var resolve = typeof(System.Windows.Controls.DataGrid).GetMethod(
-            "ResolveHeaderResizeColumn",
+        var prevColumn = typeof(System.Windows.Controls.DataGrid).GetMethod(
+            "PreviousVisibleColumn",
             System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
-        var column = resolve?.Invoke(grid, [header, 0.0]) as System.Windows.Controls.DataGridColumn;
+        var column = prevColumn?.Invoke(grid, [grid.Columns[headerIndex]]) as System.Windows.Controls.DataGridColumn;
         if (column is null)
             return MetadataResizeSnapshot(grid, headerIndex, false, 0, 0, "left edge did not resolve a resize column");
 
@@ -683,10 +774,12 @@ public sealed partial class MainPage
 
         bool ContainsFilterButton(object? content)
         {
-            if (content is Microsoft.UI.Xaml.Controls.Grid grid)
-                return grid.Children.OfType<Microsoft.UI.Xaml.Controls.Button>().Any();
-            if (content is Microsoft.UI.Xaml.Controls.StackPanel sp)
-                return sp.Children.OfType<Microsoft.UI.Xaml.Controls.Button>().Any();
+            // WPF-matching header structure wraps content in a 3-column Grid
+            // with Thumb grippers; the filter button lives in a nested Grid
+            // inside Column 1.  Walk children recursively.
+            if (content is Microsoft.UI.Xaml.Controls.Panel panel)
+                return panel.Children.OfType<Microsoft.UI.Xaml.Controls.Button>().Any()
+                    || panel.Children.OfType<Microsoft.UI.Xaml.Controls.Grid>().Any(g => ContainsFilterButton(g));
             return false;
         }
 
@@ -762,6 +855,72 @@ public sealed partial class MainPage
         if (column.Width.DisplayValue > 0)
             return column.Width.DisplayValue;
         return column.Width.Value;
+    }
+
+    static System.Windows.Controls.DataGrid? OpenMetadataGrid(MainPage page, string assemblyPath, string tableName, out string? error)
+    {
+        error = null;
+        if (!page._assemblyContext.AssemblyList.GetAssemblies()
+                .Select(a => a.GetMetadataFileOrNull())
+                .Any(f => f is not null && string.Equals(f.FileName, assemblyPath, StringComparison.OrdinalIgnoreCase)))
+        {
+            page._assemblyContext.AssemblyList.OpenAssembly(assemblyPath);
+        }
+
+        if (!Enum.TryParse<TableIndex>(tableName, ignoreCase: true, out var table))
+        {
+            error = $"unknown metadata table '{tableName}'";
+            return null;
+        }
+
+        var target = page.FindNode(page._assemblyContext.Root, node =>
+            node is ICSharpCode.ILSpy.Metadata.MetadataTableTreeNode tableNode
+            && tableNode.Kind == table);
+        if (target is null)
+        {
+            error = $"metadata table '{table}' not found";
+            return null;
+        }
+
+        page.OnTreeNodeSelected(target);
+        if (page._nodeContent?.Content is not System.Windows.Controls.DataGrid grid)
+        {
+            error = "metadata table did not render a DataGrid";
+            return null;
+        }
+
+        return grid;
+    }
+
+    static System.Windows.Controls.Primitives.DataGridColumnHeader? MetadataHeaderAt(
+        System.Windows.Controls.DataGrid grid,
+        int columnIndex)
+    {
+        var headerCells = typeof(System.Windows.Controls.DataGrid).GetField(
+            "_headerCells",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.GetValue(grid)
+            as System.Collections.IList;
+
+        return columnIndex >= 0 && columnIndex < headerCells?.Count
+            ? headerCells[columnIndex] as System.Windows.Controls.Primitives.DataGridColumnHeader
+            : null;
+    }
+
+    static System.Windows.Controls.Primitives.Thumb? HeaderGripper(
+        System.Windows.Controls.Primitives.DataGridColumnHeader header,
+        string fieldName)
+        => typeof(System.Windows.Controls.Primitives.DataGridColumnHeader).GetField(
+            fieldName,
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.GetValue(header)
+            as System.Windows.Controls.Primitives.Thumb;
+
+    static bool HeaderGripperHasCursor(System.Windows.Controls.Primitives.Thumb gripper)
+    {
+        gripper.ApplyTemplate();
+        return typeof(System.Windows.Controls.Primitives.Thumb).GetProperty(
+            "HasShimCursor",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.GetValue(gripper)
+            as bool? == true;
     }
 
     static string MetadataClipboardSnapshot(

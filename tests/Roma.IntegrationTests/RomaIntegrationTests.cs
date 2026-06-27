@@ -247,6 +247,7 @@ public sealed class RomaIntegrationTests
         Assert.True(state.GetProperty("hasGrid").GetBoolean(), $"metadata table should render a DataGrid: {raw}");
         Assert.True(state.GetProperty("resized").GetBoolean(), $"auto-size should be accepted: {raw}");
         Assert.True(state.GetProperty("after").GetDouble() > state.GetProperty("before").GetDouble(), $"column should grow to best-fit width: {raw}");
+        Assert.InRange(state.GetProperty("after").GetDouble(), state.GetProperty("bestFit").GetDouble() - 1.0, state.GetProperty("bestFit").GetDouble() + 1.0);
         Assert.Equal("Pixel", state.GetProperty("widthUnit").GetString());
     }
 
@@ -264,6 +265,56 @@ public sealed class RomaIntegrationTests
         Assert.Equal(0, state.GetProperty("columnIndex").GetInt32());
         Assert.True(state.GetProperty("resized").GetBoolean(), $"left edge resize should target the previous column: {raw}");
         Assert.True(state.GetProperty("after").GetDouble() > state.GetProperty("before").GetDouble(), $"previous column should grow: {raw}");
+        Assert.Equal("Pixel", state.GetProperty("widthUnit").GetString());
+    }
+
+    [Fact]
+    public async Task MetadataTable_HeaderGripperDragChangesWidth()
+    {
+        await _app.InvokeAsync("roma.probe.clear");
+        var assemblyPath = typeof(System.Net.Http.HttpClient).Assembly.Location;
+
+        var state = await _app.InvokeAsync("roma.probe.metadata-gripper-resize-column", assemblyPath, "TypeDef", 0, 40.0);
+
+        var raw = state.ToString();
+        Assert.False(state.TryGetProperty("error", out _), $"metadata gripper resize probe failed: {raw}");
+        Assert.True(state.GetProperty("hasGrid").GetBoolean(), $"metadata table should render a DataGrid: {raw}");
+        Assert.True(state.GetProperty("resized").GetBoolean(), $"gripper drag should be accepted: {raw}");
+        Assert.True(state.GetProperty("after").GetDouble() > state.GetProperty("before").GetDouble(), $"column should grow through header gripper: {raw}");
+        Assert.Equal("Pixel", state.GetProperty("widthUnit").GetString());
+    }
+
+    [Fact]
+    public async Task MetadataTable_HeaderGripperDoubleClickAutoSizesWidth()
+    {
+        await _app.InvokeAsync("roma.probe.clear");
+        var assemblyPath = typeof(System.Net.Http.HttpClient).Assembly.Location;
+
+        var state = await _app.InvokeAsync("roma.probe.metadata-gripper-autosize-column", assemblyPath, "TypeDef", 0);
+
+        var raw = state.ToString();
+        Assert.False(state.TryGetProperty("error", out _), $"metadata gripper auto-size probe failed: {raw}");
+        Assert.True(state.GetProperty("hasGrid").GetBoolean(), $"metadata table should render a DataGrid: {raw}");
+        Assert.True(state.GetProperty("resized").GetBoolean(), $"gripper double-click should auto-size: {raw}");
+        Assert.True(state.GetProperty("after").GetDouble() > state.GetProperty("before").GetDouble(), $"column should grow through header gripper double-click: {raw}");
+        Assert.InRange(state.GetProperty("after").GetDouble(), state.GetProperty("bestFit").GetDouble() - 1.0, state.GetProperty("bestFit").GetDouble() + 1.0);
+        Assert.Equal("Pixel", state.GetProperty("widthUnit").GetString());
+    }
+
+    [Fact]
+    public async Task MetadataTable_HeaderGripperDoubleClickShrinksWideColumnToBestFit()
+    {
+        await _app.InvokeAsync("roma.probe.clear");
+        var assemblyPath = typeof(System.Net.Http.HttpClient).Assembly.Location;
+
+        var state = await _app.InvokeAsync("roma.probe.metadata-gripper-autosize-wide-column", assemblyPath, "TypeDef", 0);
+
+        var raw = state.ToString();
+        Assert.False(state.TryGetProperty("error", out _), $"metadata gripper wide auto-size probe failed: {raw}");
+        Assert.True(state.GetProperty("hasGrid").GetBoolean(), $"metadata table should render a DataGrid: {raw}");
+        Assert.True(state.GetProperty("resized").GetBoolean(), $"gripper double-click should auto-size a wide column: {raw}");
+        Assert.True(state.GetProperty("after").GetDouble() < state.GetProperty("before").GetDouble(), $"wide column should shrink through header gripper double-click: {raw}");
+        Assert.InRange(state.GetProperty("after").GetDouble(), state.GetProperty("bestFit").GetDouble() - 1.0, state.GetProperty("bestFit").GetDouble() + 1.0);
         Assert.Equal("Pixel", state.GetProperty("widthUnit").GetString());
     }
 
