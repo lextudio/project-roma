@@ -38,6 +38,7 @@
       Svg;
     </UnoFeatures>
     <UseNuGetPackages>true</UseNuGetPackages>
+    <NoWarn>$(NoWarn);CA1416;CA1016;CS0169;CS8600;CS8604;CS8618;CS8603;CS8601;CS8602;CS8605;CS8612;CS8621;CS8766;CS8620;CS8767;CS8622;CS8625</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

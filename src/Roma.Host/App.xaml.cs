@@ -25,9 +25,9 @@ public partial class App : Microsoft.UI.Xaml.Application
     protected override void OnLaunched(LaunchActivatedEventArgs args)
     {
         MainWindow = new Window();
-#if DEBUG
-        MainWindow.UseStudio();
-#endif
+        var version = typeof(App).Assembly.GetName().Version;
+        var display = version is not null ? $"{version.Major}.{version.Minor}.{version.Build}" : "0.0.0";
+        MainWindow.Title = $"Roma v{display}";
 
         // Persist the dock layout (tool-pane visibility/sizes) on shutdown, mirroring ILSpy's
         // MainWindow.OnClosing. Restored on next launch in MainPage.RestoreDockLayout.

@@ -54,9 +54,9 @@ namespace ICSharpCode.ILSpy.Controls.TreeView
             _selectedNodes.AddRange(nodes);
         }
 
-        public IReadOnlyList<SharpTreeNode> SelectedItems => _selectedNodes;
+        public new IReadOnlyList<SharpTreeNode> SelectedItems => _selectedNodes;
 
-        public SharpTreeNode? SelectedItem => _selectedNodes.Count > 0 ? _selectedNodes[0] : null;
+        public new SharpTreeNode? SelectedItem => _selectedNodes.Count > 0 ? _selectedNodes[0] : null;
 
         // Mirrors SharpTreeView.GetTopLevelSelection(): the selected nodes that are not
         // descendants of another selected node. With single selection this is just the node.
