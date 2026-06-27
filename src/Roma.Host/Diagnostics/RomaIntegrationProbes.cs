@@ -227,6 +227,132 @@ public sealed partial class MainPage
         return HeaderDetailsSnapshot(page, headerName, expectedMember, grid, selector, template, detailsGrid, null);
     });
 
+    [DevFlowAction("roma.probe.metadata-resize-column", Description = "PROBE: resize a metadata DataGrid column; returns width snapshot JSON.")]
+    public static string ProbeMetadataResizeColumn(string assemblyPath, string tableName, int columnIndex, double delta) => RunOnUi(page =>
+    {
+        if (!page._assemblyContext.AssemblyList.GetAssemblies()
+                .Select(a => a.GetMetadataFileOrNull())
+                .Any(f => f is not null && string.Equals(f.FileName, assemblyPath, StringComparison.OrdinalIgnoreCase)))
+        {
+            page._assemblyContext.AssemblyList.OpenAssembly(assemblyPath);
+        }
+
+        if (!Enum.TryParse<TableIndex>(tableName, ignoreCase: true, out var table))
+            return Snapshot(page, error: $"unknown metadata table '{tableName}'");
+
+        var target = page.FindNode(page._assemblyContext.Root, node =>
+            node is ICSharpCode.ILSpy.Metadata.MetadataTableTreeNode tableNode
+            && tableNode.Kind == table);
+        if (target is null)
+            return Snapshot(page, error: $"metadata table '{table}' not found");
+
+        page.OnTreeNodeSelected(target);
+        var grid = page._nodeContent?.Content as System.Windows.Controls.DataGrid;
+        if (grid is null)
+            return MetadataResizeSnapshot(null, columnIndex, false, 0, 0, "metadata table did not render a DataGrid");
+
+        grid.UpdateLayout();
+        if (columnIndex < 0 || columnIndex >= grid.Columns.Count)
+            return MetadataResizeSnapshot(grid, columnIndex, false, 0, 0, $"column index {columnIndex} out of range");
+
+        var column = grid.Columns[columnIndex];
+        var before = EffectiveColumnWidth(column);
+        var method = typeof(System.Windows.Controls.DataGrid).GetMethod(
+            "ShimTryResizeColumn",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var resized = method?.Invoke(grid, [column, delta]) as bool? == true;
+        grid.UpdateLayout();
+        var after = EffectiveColumnWidth(column);
+        return MetadataResizeSnapshot(grid, columnIndex, resized, before, after, null);
+    });
+
+    [DevFlowAction("roma.probe.metadata-copy-selection", Description = "PROBE: copy selected metadata DataGrid row; returns clipboard snapshot JSON.")]
+    public static string ProbeMetadataCopySelection(string assemblyPath, string tableName, bool includeHeader) => RunOnUi(page =>
+    {
+        if (!page._assemblyContext.AssemblyList.GetAssemblies()
+                .Select(a => a.GetMetadataFileOrNull())
+                .Any(f => f is not null && string.Equals(f.FileName, assemblyPath, StringComparison.OrdinalIgnoreCase)))
+        {
+            page._assemblyContext.AssemblyList.OpenAssembly(assemblyPath);
+        }
+
+        if (!Enum.TryParse<TableIndex>(tableName, ignoreCase: true, out var table))
+            return MetadataClipboardSnapshot(null, false, null, null, null, $"unknown metadata table '{tableName}'");
+
+        var target = page.FindNode(page._assemblyContext.Root, node =>
+            node is ICSharpCode.ILSpy.Metadata.MetadataTableTreeNode tableNode
+            && tableNode.Kind == table);
+        if (target is null)
+            return MetadataClipboardSnapshot(null, false, null, null, null, $"metadata table '{table}' not found");
+
+        page.OnTreeNodeSelected(target);
+        var grid = page._nodeContent?.Content as System.Windows.Controls.DataGrid;
+        if (grid is null)
+            return MetadataClipboardSnapshot(null, false, null, null, null, "metadata table did not render a DataGrid");
+
+        grid.UpdateLayout();
+        var item = grid.Items.Cast<object?>().FirstOrDefault();
+        if (item is null)
+            return MetadataClipboardSnapshot(grid, false, null, null, null, "metadata table has no rows");
+
+        grid.ClipboardCopyMode = includeHeader
+            ? System.Windows.Controls.DataGridClipboardCopyMode.IncludeHeader
+            : System.Windows.Controls.DataGridClipboardCopyMode.ExcludeHeader;
+        grid.SelectedItem = item;
+        if (!grid.SelectedItems.Contains(item))
+        {
+            grid.SelectedItems.Add(item);
+        }
+
+        var method = typeof(System.Windows.Controls.DataGrid).GetMethod(
+            "ShimBuildClipboardDataObject",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var data = method?.Invoke(grid, []) as System.Windows.DataObject;
+        var text = data?.GetData(System.Windows.DataFormats.UnicodeText)?.ToString();
+        var csv = data?.GetData(System.Windows.DataFormats.CommaSeparatedValue)?.ToString();
+        return MetadataClipboardSnapshot(grid, data is not null, text, csv, item, null);
+    });
+
+    [DevFlowAction("roma.probe.metadata-keyboard-selection", Description = "PROBE: select-all and move current cell in a metadata DataGrid; returns selection snapshot JSON.")]
+    public static string ProbeMetadataKeyboardSelection(string assemblyPath, string tableName) => RunOnUi(page =>
+    {
+        if (!page._assemblyContext.AssemblyList.GetAssemblies()
+                .Select(a => a.GetMetadataFileOrNull())
+                .Any(f => f is not null && string.Equals(f.FileName, assemblyPath, StringComparison.OrdinalIgnoreCase)))
+        {
+            page._assemblyContext.AssemblyList.OpenAssembly(assemblyPath);
+        }
+
+        if (!Enum.TryParse<TableIndex>(tableName, ignoreCase: true, out var table))
+            return MetadataKeyboardSelectionSnapshot(null, false, false, null, null, $"unknown metadata table '{tableName}'");
+
+        var target = page.FindNode(page._assemblyContext.Root, node =>
+            node is ICSharpCode.ILSpy.Metadata.MetadataTableTreeNode tableNode
+            && tableNode.Kind == table);
+        if (target is null)
+            return MetadataKeyboardSelectionSnapshot(null, false, false, null, null, $"metadata table '{table}' not found");
+
+        page.OnTreeNodeSelected(target);
+        var grid = page._nodeContent?.Content as System.Windows.Controls.DataGrid;
+        if (grid is null)
+            return MetadataKeyboardSelectionSnapshot(null, false, false, null, null, "metadata table did not render a DataGrid");
+
+        grid.UpdateLayout();
+        grid.SelectionUnit = System.Windows.Controls.DataGridSelectionUnit.Cell;
+        var selectAll = typeof(System.Windows.Controls.DataGrid).GetMethod(
+            "ShimSelectAllCells",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var move = typeof(System.Windows.Controls.DataGrid).GetMethod(
+            "MoveCurrentCellByOffset",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+
+        var selected = selectAll?.Invoke(grid, []) as bool? == true;
+        var beforeHeader = grid.CurrentCell.Column?.Header?.ToString();
+        var moved = move?.Invoke(grid, [0, 1, false]) as bool? == true;
+        var afterHeader = grid.CurrentCell.Column?.Header?.ToString();
+        return MetadataKeyboardSelectionSnapshot(grid, selected, moved, beforeHeader, afterHeader, null);
+    });
+
     [DevFlowAction("roma.probe.metadata-custom-debug-row-details", Description = "PROBE: open CustomDebugInformation and materialize first row details.")]
     public static string ProbeMetadataCustomDebugRowDetails(string assemblyPath) => RunOnUi(page =>
     {
@@ -283,6 +409,81 @@ public sealed partial class MainPage
         sb.Append('}');
         return sb.ToString();
     });
+
+    [DevFlowAction("roma.probe.flags-tooltip-xaml-resources", Description = "PROBE: report upstream FlagsTooltip.xaml resource translation.")]
+    public static string ProbeFlagsTooltipXamlResources() => RunOnUi(page =>
+    {
+        var xamlPath = System.IO.Path.Combine(AppContext.BaseDirectory, "ILSpy", "Metadata", "FlagsTooltip.xaml");
+        System.Windows.Controls.WpfXamlResourceTranslationReport? report = null;
+        if (System.IO.File.Exists(xamlPath))
+        {
+            _ = System.Windows.Controls.WpfXamlResourceTranslator.TranslateResourceDictionary(
+                System.IO.File.ReadAllText(xamlPath),
+                ResolveFlagsTooltipXamlType,
+                out report);
+        }
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append('{');
+        sb.Append($"\"xamlPresent\":{(System.IO.File.Exists(xamlPath) ? "true" : "false")},");
+        sb.Append($"\"translated\":[{JsonArray(report?.TranslatedKeys)}],");
+        sb.Append($"\"fallback\":[{JsonArray(report?.FallbackKeys)}],");
+        sb.Append($"\"skipped\":[{JsonArray(report?.SkippedKeys)}]");
+        sb.Append('}');
+        return sb.ToString();
+    });
+
+    [DevFlowAction("roma.probe.resource-tables-xaml-resources", Description = "PROBE: report upstream Resource*Table.xaml resource translation.")]
+    public static string ProbeResourceTablesXamlResources() => RunOnUi(page =>
+    {
+        var stringTablePath = System.IO.Path.Combine(AppContext.BaseDirectory, "ILSpy", "Controls", "ResourceStringTable.xaml");
+        var objectTablePath = System.IO.Path.Combine(AppContext.BaseDirectory, "ILSpy", "Controls", "ResourceObjectTable.xaml");
+        var stringReport = TranslateResourceTableXaml(stringTablePath);
+        var objectReport = TranslateResourceTableXaml(objectTablePath);
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append('{');
+        sb.Append($"\"stringXamlPresent\":{(System.IO.File.Exists(stringTablePath) ? "true" : "false")},");
+        sb.Append($"\"stringTranslated\":[{JsonArray(stringReport?.TranslatedKeys)}],");
+        sb.Append($"\"stringFallback\":[{JsonArray(stringReport?.FallbackKeys)}],");
+        sb.Append($"\"stringSkipped\":[{JsonArray(stringReport?.SkippedKeys)}],");
+        sb.Append($"\"objectXamlPresent\":{(System.IO.File.Exists(objectTablePath) ? "true" : "false")},");
+        sb.Append($"\"objectTranslated\":[{JsonArray(objectReport?.TranslatedKeys)}],");
+        sb.Append($"\"objectFallback\":[{JsonArray(objectReport?.FallbackKeys)}],");
+        sb.Append($"\"objectSkipped\":[{JsonArray(objectReport?.SkippedKeys)}]");
+        sb.Append('}');
+        return sb.ToString();
+    });
+
+    private static System.Windows.Controls.WpfXamlResourceTranslationReport? TranslateResourceTableXaml(string path)
+    {
+        if (!System.IO.File.Exists(path))
+        {
+            return null;
+        }
+
+        _ = System.Windows.Controls.WpfXamlResourceTranslator.TranslateResourceDictionary(
+            System.IO.File.ReadAllText(path),
+            ResolveResourceTableXamlType,
+            out var report);
+        return report;
+    }
+
+    private static Type? ResolveResourceTableXamlType(string name)
+        => name switch
+        {
+            "ListViewItem" => typeof(Microsoft.UI.Xaml.Controls.ListViewItem),
+            _ => null
+        };
+
+    private static Type? ResolveFlagsTooltipXamlType(string name)
+        => name switch
+        {
+            "NullVisibilityConverter" or "local:NullVisibilityConverter" => typeof(ICSharpCode.ILSpy.Metadata.NullVisibilityConverter),
+            "local:MultipleChoiceGroup" => typeof(ICSharpCode.ILSpy.Metadata.MultipleChoiceGroup),
+            "local:SingleChoiceGroup" => typeof(ICSharpCode.ILSpy.Metadata.SingleChoiceGroup),
+            _ => null
+        };
 
     // ---- helpers ----
 
@@ -354,6 +555,95 @@ public sealed partial class MainPage
         sb.Append($"\"autoGenerateColumns\":{(grid?.AutoGenerateColumns == true ? "true" : "false")},");
         sb.Append($"\"autoFilterEnabled\":{(autoFilter ? "true" : "false")},");
         sb.Append($"\"headers\":[{headers}]");
+        sb.Append('}');
+        return sb.ToString();
+    }
+
+    static string MetadataResizeSnapshot(
+        System.Windows.Controls.DataGrid? grid,
+        int columnIndex,
+        bool resized,
+        double before,
+        double after,
+        string? error)
+    {
+        var column = grid is not null && columnIndex >= 0 && columnIndex < grid.Columns.Count
+            ? grid.Columns[columnIndex]
+            : null;
+        var sb = new System.Text.StringBuilder();
+        sb.Append('{');
+        sb.Append($"\"hasGrid\":{(grid is null ? "false" : "true")},");
+        sb.Append($"\"columns\":{grid?.Columns.Count ?? 0},");
+        sb.Append($"\"columnIndex\":{columnIndex},");
+        sb.Append($"\"header\":{Json(column?.Header?.ToString())},");
+        sb.Append($"\"resized\":{(resized ? "true" : "false")},");
+        sb.Append($"\"before\":{before.ToString(System.Globalization.CultureInfo.InvariantCulture)},");
+        sb.Append($"\"after\":{after.ToString(System.Globalization.CultureInfo.InvariantCulture)},");
+        sb.Append($"\"widthUnit\":{Json(column?.Width.UnitType.ToString())}");
+        if (error is not null) sb.Append(',').Append($"\"error\":{Json(error)}");
+        sb.Append('}');
+        return sb.ToString();
+    }
+
+    static double EffectiveColumnWidth(System.Windows.Controls.DataGridColumn column)
+    {
+        if (column.Width.IsAbsolute)
+            return column.Width.Value;
+        if (column.ActualWidth > 0)
+            return column.ActualWidth;
+        if (column.Width.DisplayValue > 0)
+            return column.Width.DisplayValue;
+        return column.Width.Value;
+    }
+
+    static string MetadataClipboardSnapshot(
+        System.Windows.Controls.DataGrid? grid,
+        bool copied,
+        string? text,
+        string? csv,
+        object? item,
+        string? error)
+    {
+        var firstLine = text?.Split(["\r\n", "\n"], StringSplitOptions.None).FirstOrDefault();
+        var secondLine = text?.Split(["\r\n", "\n"], StringSplitOptions.None).Skip(1).FirstOrDefault();
+        var sb = new System.Text.StringBuilder();
+        sb.Append('{');
+        sb.Append($"\"hasGrid\":{(grid is null ? "false" : "true")},");
+        sb.Append($"\"rows\":{grid?.Items.Count ?? 0},");
+        sb.Append($"\"columns\":{grid?.Columns.Count ?? 0},");
+        sb.Append($"\"selectedItems\":{grid?.SelectedItems.Count ?? 0},");
+        sb.Append($"\"copied\":{(copied ? "true" : "false")},");
+        sb.Append($"\"textLength\":{text?.Length ?? 0},");
+        sb.Append($"\"csvLength\":{csv?.Length ?? 0},");
+        sb.Append($"\"firstLine\":{Json(firstLine)},");
+        sb.Append($"\"secondLine\":{Json(secondLine)},");
+        sb.Append($"\"itemType\":{Json(item?.GetType().FullName)}");
+        if (error is not null) sb.Append(',').Append($"\"error\":{Json(error)}");
+        sb.Append('}');
+        return sb.ToString();
+    }
+
+    static string MetadataKeyboardSelectionSnapshot(
+        System.Windows.Controls.DataGrid? grid,
+        bool selected,
+        bool moved,
+        string? beforeHeader,
+        string? afterHeader,
+        string? error)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append('{');
+        sb.Append($"\"hasGrid\":{(grid is null ? "false" : "true")},");
+        sb.Append($"\"rows\":{grid?.Items.Count ?? 0},");
+        sb.Append($"\"columns\":{grid?.Columns.Count ?? 0},");
+        sb.Append($"\"selectedCells\":{grid?.SelectedCells.Count ?? 0},");
+        sb.Append($"\"selectedItems\":{grid?.SelectedItems.Count ?? 0},");
+        sb.Append($"\"selectionUnit\":{Json(grid?.SelectionUnit.ToString())},");
+        sb.Append($"\"selected\":{(selected ? "true" : "false")},");
+        sb.Append($"\"moved\":{(moved ? "true" : "false")},");
+        sb.Append($"\"beforeHeader\":{Json(beforeHeader)},");
+        sb.Append($"\"afterHeader\":{Json(afterHeader)}");
+        if (error is not null) sb.Append(',').Append($"\"error\":{Json(error)}");
         sb.Append('}');
         return sb.ToString();
     }

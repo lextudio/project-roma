@@ -219,6 +219,59 @@ public sealed class RomaIntegrationTests
     }
 
     [Fact]
+    public async Task MetadataTable_ColumnResizeChangesWidth()
+    {
+        await _app.InvokeAsync("roma.probe.clear");
+        var assemblyPath = typeof(System.Net.Http.HttpClient).Assembly.Location;
+
+        var state = await _app.InvokeAsync("roma.probe.metadata-resize-column", assemblyPath, "TypeDef", 0, 40.0);
+
+        var raw = state.ToString();
+        Assert.False(state.TryGetProperty("error", out _), $"metadata resize probe failed: {raw}");
+        Assert.True(state.GetProperty("hasGrid").GetBoolean(), $"metadata table should render a DataGrid: {raw}");
+        Assert.True(state.GetProperty("resized").GetBoolean(), $"resize should be accepted: {raw}");
+        Assert.True(state.GetProperty("after").GetDouble() > state.GetProperty("before").GetDouble(), $"column should grow: {raw}");
+        Assert.Equal("Pixel", state.GetProperty("widthUnit").GetString());
+    }
+
+    [Fact]
+    public async Task MetadataTable_CopySelectedRowProducesClipboardText()
+    {
+        await _app.InvokeAsync("roma.probe.clear");
+        var assemblyPath = typeof(System.Net.Http.HttpClient).Assembly.Location;
+
+        var state = await _app.InvokeAsync("roma.probe.metadata-copy-selection", assemblyPath, "TypeDef", true);
+
+        var raw = state.ToString();
+        Assert.False(state.TryGetProperty("error", out _), $"metadata copy probe failed: {raw}");
+        Assert.True(state.GetProperty("hasGrid").GetBoolean(), $"metadata table should render a DataGrid: {raw}");
+        Assert.True(state.GetProperty("copied").GetBoolean(), $"copy should produce a DataObject: {raw}");
+        Assert.True(state.GetProperty("selectedItems").GetInt32() > 0, $"probe should select a row: {raw}");
+        Assert.True(state.GetProperty("textLength").GetInt32() > 0, $"UnicodeText payload should not be empty: {raw}");
+        Assert.True(state.GetProperty("csvLength").GetInt32() > 0, $"CSV payload should not be empty: {raw}");
+        Assert.Contains("Token", state.GetProperty("firstLine").GetString());
+        Assert.False(string.IsNullOrWhiteSpace(state.GetProperty("secondLine").GetString()));
+    }
+
+    [Fact]
+    public async Task MetadataTable_KeyboardSelectionSelectsCellsAndMovesCurrentCell()
+    {
+        await _app.InvokeAsync("roma.probe.clear");
+        var assemblyPath = typeof(System.Net.Http.HttpClient).Assembly.Location;
+
+        var state = await _app.InvokeAsync("roma.probe.metadata-keyboard-selection", assemblyPath, "Module");
+
+        var raw = state.ToString();
+        Assert.False(state.TryGetProperty("error", out _), $"metadata keyboard selection probe failed: {raw}");
+        Assert.True(state.GetProperty("hasGrid").GetBoolean(), $"metadata table should render a DataGrid: {raw}");
+        Assert.Equal("Cell", state.GetProperty("selectionUnit").GetString());
+        Assert.True(state.GetProperty("selected").GetBoolean(), $"select-all should be accepted: {raw}");
+        Assert.True(state.GetProperty("moved").GetBoolean(), $"current cell should move right: {raw}");
+        Assert.True(state.GetProperty("selectedCells").GetInt32() > 0, $"select-all should populate selected cells: {raw}");
+        Assert.NotEqual(state.GetProperty("beforeHeader").GetString(), state.GetProperty("afterHeader").GetString());
+    }
+
+    [Fact]
     public async Task MetadataHeader_RowDetailsRendersNestedDataGrid()
     {
         await _app.InvokeAsync("roma.probe.clear");
@@ -296,14 +349,76 @@ public sealed class RomaIntegrationTests
         var fallback = state.GetProperty("fallback").EnumerateArray().Select(x => x.GetString()).ToArray();
         var skipped = state.GetProperty("skipped").EnumerateArray().Select(x => x.GetString()).ToArray();
 
-        Assert.Contains("DataGridCellStyle", translated);
-        Assert.Contains("DefaultFilter", translated);
-        Assert.Contains("CustomDebugInformationDetailsTextBlob", translated);
-        Assert.Contains("CustomDebugInformationDetailsDataGrid", translated);
-        Assert.Contains("HeaderFlagsDetailsDataGrid", translated);
-        Assert.DoesNotContain("CustomDebugInformationDetailsDataGrid", fallback);
-        Assert.DoesNotContain("CustomDebugInformationDetailsTextBlob", fallback);
-        Assert.DoesNotContain("HeaderFlagsDetailsDataGrid", fallback);
-        Assert.Contains("byteWidthConverter", skipped);
+        Assert.Equal(new[]
+        {
+            "DataGridCellStyle",
+            "DefaultFilter",
+            "HexFilter",
+            "AssemblyFlagsFilter",
+            "AssemblyHashAlgorithmFilter",
+            "MethodAttributesFilter",
+            "MethodImplAttributesFilter",
+            "MethodSemanticsAttributesFilter",
+            "TypeAttributesFilter",
+            "PropertyAttributesFilter",
+            "EventAttributesFilter",
+            "FieldAttributesFilter",
+            "ManifestResourceAttributesFilter",
+            "GenericParameterAttributesFilter",
+            "PInvokeAttributesFilter",
+            "ItemContainerStyle",
+            "byteWidthConverter",
+            "CustomDebugInformationDetailsDataGrid",
+            "CustomDebugInformationDetailsTextBlob",
+            "HeaderFlagsDetailsDataGrid"
+        }, translated);
+        Assert.Empty(fallback);
+        Assert.Empty(skipped);
+    }
+
+    [Fact]
+    public async Task FlagsTooltip_ReportsUpstreamXamlResourceTranslation()
+    {
+        var state = await _app.InvokeAsync("roma.probe.flags-tooltip-xaml-resources");
+
+        var raw = state.ToString();
+        Assert.True(state.GetProperty("xamlPresent").GetBoolean(), $"FlagsTooltip.xaml should be copied to output: {raw}");
+
+        var translated = state.GetProperty("translated").EnumerateArray().Select(x => x.GetString()).ToArray();
+        var fallback = state.GetProperty("fallback").EnumerateArray().Select(x => x.GetString()).ToArray();
+        var skipped = state.GetProperty("skipped").EnumerateArray().Select(x => x.GetString()).ToArray();
+
+        Assert.Equal(new[]
+        {
+            "nullVisConv",
+            "ICSharpCode.ILSpy.Metadata.MultipleChoiceGroup",
+            "ICSharpCode.ILSpy.Metadata.SingleChoiceGroup"
+        }, translated);
+        Assert.Empty(fallback);
+        Assert.Empty(skipped);
+    }
+
+    [Fact]
+    public async Task ResourceTables_ReportUpstreamXamlResourceTranslation()
+    {
+        var state = await _app.InvokeAsync("roma.probe.resource-tables-xaml-resources");
+
+        var raw = state.ToString();
+        Assert.True(state.GetProperty("stringXamlPresent").GetBoolean(), $"ResourceStringTable.xaml should be copied to output: {raw}");
+        Assert.True(state.GetProperty("objectXamlPresent").GetBoolean(), $"ResourceObjectTable.xaml should be copied to output: {raw}");
+
+        var stringTranslated = state.GetProperty("stringTranslated").EnumerateArray().Select(x => x.GetString()).ToArray();
+        var stringFallback = state.GetProperty("stringFallback").EnumerateArray().Select(x => x.GetString()).ToArray();
+        var stringSkipped = state.GetProperty("stringSkipped").EnumerateArray().Select(x => x.GetString()).ToArray();
+        var objectTranslated = state.GetProperty("objectTranslated").EnumerateArray().Select(x => x.GetString()).ToArray();
+        var objectFallback = state.GetProperty("objectFallback").EnumerateArray().Select(x => x.GetString()).ToArray();
+        var objectSkipped = state.GetProperty("objectSkipped").EnumerateArray().Select(x => x.GetString()).ToArray();
+
+        Assert.Equal(new[] { "BackgroundConverter", "alternatingWithBinding" }, stringTranslated);
+        Assert.Empty(stringFallback);
+        Assert.Empty(stringSkipped);
+        Assert.Equal(new[] { "BackgroundConverter", "alternatingWithBinding" }, objectTranslated);
+        Assert.Empty(objectFallback);
+        Assert.Empty(objectSkipped);
     }
 }

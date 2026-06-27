@@ -88,6 +88,7 @@ namespace ICSharpCode.ILSpy.Metadata
             {
                 "DataGridCell" => typeof(DataGridCell),
                 "ListViewItem" => typeof(ListViewItem),
+                "ByteWidthConverter" or "local:ByteWidthConverter" => typeof(ByteWidthConverter),
                 "srm:AssemblyFlags" => typeof(AssemblyFlags),
                 "srm:AssemblyHashAlgorithm" => typeof(AssemblyHashAlgorithm),
                 "reflection:MethodAttributes" => typeof(MethodAttributes),

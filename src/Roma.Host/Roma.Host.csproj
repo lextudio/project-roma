@@ -87,6 +87,15 @@
     <Content Include="..\..\ext\ilspy\ILSpy\Metadata\MetadataTableViews.xaml"
              Link="ILSpy\Metadata\MetadataTableViews.xaml"
              CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\ext\ilspy\ILSpy\Metadata\FlagsTooltip.xaml"
+             Link="ILSpy\Metadata\FlagsTooltip.xaml"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\ext\ilspy\ILSpy\Controls\ResourceStringTable.xaml"
+             Link="ILSpy\Controls\ResourceStringTable.xaml"
+             CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="..\..\ext\ilspy\ILSpy\Controls\ResourceObjectTable.xaml"
+             Link="ILSpy\Controls\ResourceObjectTable.xaml"
+             CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <!-- ILSpy localized strings: embed the real resx + link the Designer.cs so
