@@ -658,7 +658,37 @@ public sealed partial class MainPage
             ? ""
             : string.Join(",", grid.Columns.Cast<System.Windows.Controls.DataGridColumn>()
                 .Select(c => Json(c.Header?.ToString())));
+
+        var widths = grid is null
+            ? ""
+            : string.Join(",", grid.Columns.Cast<System.Windows.Controls.DataGridColumn>()
+                .Select(c => JsonNumber(EffectiveColumnWidth(c))));
+
         var autoFilter = grid is not null && DataGridExtensions.DataGridFilter.GetIsAutoFilterEnabled(grid);
+
+        var dataGridType = grid?.GetType().BaseType;
+        var headerCellsField = dataGridType?.GetField("_headerCells",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var headerCells = headerCellsField?.GetValue(grid) as System.Collections.IList;
+        var headerCellsCount = headerCells?.Count ?? -1;
+        var visibleField = dataGridType?.GetField("_visibleColumns",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var visibleList = visibleField?.GetValue(grid) as System.Collections.IList;
+        var visibleCount = visibleList?.Count ?? -1;
+        var hasFilters = headerCells is null || headerCells.Count == 0
+            ? ""
+            : string.Join(",", headerCells.Cast<object>()
+                .Select(h => h.GetType().GetProperty("Content")?.GetValue(h))
+                .Select(c => ContainsFilterButton(c) ? "true" : "false"));
+
+        bool ContainsFilterButton(object? content)
+        {
+            if (content is Microsoft.UI.Xaml.Controls.Grid grid)
+                return grid.Children.OfType<Microsoft.UI.Xaml.Controls.Button>().Any();
+            if (content is Microsoft.UI.Xaml.Controls.StackPanel sp)
+                return sp.Children.OfType<Microsoft.UI.Xaml.Controls.Button>().Any();
+            return false;
+        }
 
         var sb = new System.Text.StringBuilder();
         sb.Append('{');
@@ -669,6 +699,10 @@ public sealed partial class MainPage
         sb.Append($"\"hasGrid\":{(grid is null ? "false" : "true")},");
         sb.Append($"\"rows\":{grid?.Items.Count ?? 0},");
         sb.Append($"\"columns\":{grid?.Columns.Count ?? 0},");
+        sb.Append($"\"columnWidths\":[{widths}],");
+        sb.Append($"\"headerCellsCount\":{headerCellsCount},");
+        sb.Append($"\"visibleColumnsCount\":{visibleCount},");
+        sb.Append($"\"hasFilterButtons\":[{hasFilters}],");
         sb.Append($"\"autoGenerateColumns\":{(grid?.AutoGenerateColumns == true ? "true" : "false")},");
         sb.Append($"\"autoFilterEnabled\":{(autoFilter ? "true" : "false")},");
         sb.Append($"\"headers\":[{headers}]");

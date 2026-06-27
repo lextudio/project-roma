@@ -454,4 +454,53 @@ public sealed class RomaIntegrationTests
         Assert.Empty(objectFallback);
         Assert.Empty(objectSkipped);
     }
+
+    [Fact]
+    public async Task MetadataTable_ColumnWidthsAreReasonable()
+    {
+        // Session 65: verify column widths are > 20px (no longer stuck at the
+        // narrow sync-width value from a regression where synchronous width
+        // computation produced 20px because data cells hadn't measured yet).
+        await _app.InvokeAsync("roma.probe.clear");
+        var assemblyPath = typeof(System.Net.Http.HttpClient).Assembly.Location;
+
+        var state = await _app.InvokeAsync("roma.probe.metadata-open-table", assemblyPath, "TypeDef");
+
+        var raw = state.ToString();
+        Assert.True(state.GetProperty("hasGrid").GetBoolean(), $"metadata table should render a DataGrid: {raw}");
+
+        var widths = state.GetProperty("columnWidths").EnumerateArray()
+            .Select(w => w.GetDouble())
+            .ToArray();
+        Assert.NotEmpty(widths);
+        foreach (var (w, i) in widths.Select((w, i) => (w, i)))
+        {
+            Assert.True(w > 20, $"column [{i}] width {w} should be > 20px (not stuck at narrow default): {raw}");
+        }
+    }
+
+    [Fact]
+    public async Task MetadataTable_HeadersHaveFilterButtons()
+    {
+        // Session 65: columns with a filter template show a funnel-icon filter
+        // button on the header. Tooltip-only columns (no template) do not.
+        // Verify at least the visible data columns have buttons.
+        await _app.InvokeAsync("roma.probe.clear");
+        var assemblyPath = typeof(System.Net.Http.HttpClient).Assembly.Location;
+
+        var state = await _app.InvokeAsync("roma.probe.metadata-open-table", assemblyPath, "TypeDef");
+
+        var raw = state.ToString();
+        Assert.True(state.GetProperty("autoFilterEnabled").GetBoolean(), $"auto-filter should be enabled: {raw}");
+
+        var hasFilters = state.GetProperty("hasFilterButtons").EnumerateArray()
+            .Select(f => f.GetBoolean())
+            .ToArray();
+        Assert.NotEmpty(hasFilters);
+        // The first 9 columns (RID, Token, Offset, Attributes, Name,
+        // Namespace, BaseType, FieldList, MethodList) always have filter
+        // templates; the remaining 15 are tooltip-only columns.
+        Assert.True(hasFilters.Count(f => f) >= 9,
+            $"expected at least 9 columns with filter buttons, got {hasFilters.Count(f => f)}");
+    }
 }
