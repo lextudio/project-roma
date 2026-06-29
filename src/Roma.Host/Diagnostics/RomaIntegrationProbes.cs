@@ -600,19 +600,20 @@ public sealed partial class MainPage
         if (state.GetType().GetField("ColumnFilters", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.GetValue(state) is System.Collections.IDictionary filters)
             filters[column] = new DataGridExtensions.HexContentFilter(filterText);
 
+        // Expected count must be computed before ShimApplyFilterView mutates Items into the
+        // filtered view (after which Items.Count IS the filtered count).
+        var expected = grid.Items.Cast<object?>().Count(i => DataGridExtensions.DataGridFilter.MatchesAllFilters(grid, i));
+
         typeof(System.Windows.Controls.DataGrid).GetMethod(
-            "ShimInvalidateRealizationView", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.Invoke(grid, null);
+            "ShimApplyFilterView", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.Invoke(grid, null);
         grid.UpdateLayout();
 
-        var expected = grid.Items.Cast<object?>().Count(i => DataGridExtensions.DataGridFilter.MatchesAllFilters(grid, i));
-        var viewAfter = ShimRealizationCount(grid);
+        // Items is now the filtered+sorted view (WPF ICollectionView.Filter).
+        var viewAfter = grid.Items.Count;
         return VirtualizationFilterSnapshot(total, viewBefore, viewAfter, expected, null);
     });
 
-    static int ShimRealizationCount(System.Windows.Controls.DataGrid grid)
-        => typeof(System.Windows.Controls.DataGrid).GetProperty(
-               "ShimRealizationCount", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
-               ?.GetValue(grid) as int? ?? -1;
+    static int ShimRealizationCount(System.Windows.Controls.DataGrid grid) => grid.Items.Count;
 
     static string VirtualizationFilterSnapshot(int total, int viewBefore, int viewAfter, int expected, string? error)
     {
@@ -623,6 +624,167 @@ public sealed partial class MainPage
         sb.Append($"\"viewAfter\":{viewAfter},");
         sb.Append($"\"expected\":{expected},");
         sb.Append($"\"honorsFilter\":{(viewAfter == expected && viewAfter < total ? "true" : "false")}");
+        if (error is not null) sb.Append(',').Append($"\"error\":{Json(error)}");
+        sb.Append('}');
+        return sb.ToString();
+    }
+
+    // Verifies off-screen scroll-into-view (A1): an item far outside the realized window is
+    // not realized, and ShimScrollItemIntoView devirtualizes it (scrolls + realizes).
+    [DevFlowAction("roma.probe.metadata-scroll-into-view", Description = "PROBE: enable virtualization, scroll an off-screen item into view, verify it devirtualizes.")]
+    public static string ProbeMetadataScrollIntoView(string assemblyPath, string tableName) => RunOnUi(page =>
+    {
+        var grid = OpenMetadataGrid(page, assemblyPath, tableName, out var error);
+        if (grid is null)
+            return ScrollIntoViewSnapshot(0, -1, false, false, -1, error ?? "metadata table did not render a DataGrid");
+
+        grid.UpdateLayout();
+        var total = grid.Items.Count;
+
+        var enable = typeof(System.Windows.Controls.DataGrid).GetMethod(
+            "ShimSetRowVirtualization", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        if (enable?.Invoke(grid, [true]) as bool? != true)
+            return ScrollIntoViewSnapshot(total, -1, false, false, -1, "could not enable row virtualization");
+        grid.UpdateLayout();
+
+        if (total <= 0)
+            return ScrollIntoViewSnapshot(total, -1, false, false, -1, "empty table");
+
+        // Pin a small viewport at the top so the target index is genuinely off-screen
+        // (the first measure's fallback viewport can otherwise be large enough to realize it).
+        var presenter = FindDescendant<System.Windows.Controls.Primitives.DataGridRowsPresenter>(grid);
+        var forceViewport = typeof(System.Windows.Controls.VirtualizingStackPanel).GetMethod(
+            "ShimForceViewport", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        if (presenter is not null)
+        {
+            forceViewport?.Invoke(presenter, [0d, 500d]);
+            grid.UpdateLayout();
+        }
+
+        // Pick an index well outside that top window.
+        var targetIndex = Math.Min(total - 1, total / 2 + 300);
+        var targetItem = grid.Items[targetIndex];
+        var realizedBefore = grid.ItemContainerGenerator.ContainerFromItem(targetItem) is not null;
+
+        var scroll = typeof(System.Windows.Controls.DataGrid).GetMethod(
+            "ShimScrollItemIntoView", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var realizedAfter = scroll?.Invoke(grid, [targetItem]) as bool? == true;
+        var firstAfter = FirstRealizedRowIndex(grid);
+
+        return ScrollIntoViewSnapshot(total, targetIndex, realizedBefore, realizedAfter, firstAfter, null);
+    });
+
+    // Verifies off-screen selection end-to-end via ILSpy's real SelectItem extension: selecting
+    // a virtualized off-screen item scrolls it into view, realizes it, and marks it selected.
+    [DevFlowAction("roma.probe.metadata-select-offscreen", Description = "PROBE: enable virtualization, SelectItem an off-screen item, verify it devirtualizes and is selected.")]
+    public static string ProbeMetadataSelectOffscreen(string assemblyPath, string tableName) => RunOnUi(page =>
+    {
+        var grid = OpenMetadataGrid(page, assemblyPath, tableName, out var error);
+        if (grid is null)
+            return SelectOffscreenSnapshot(0, -1, false, false, false, -1, error ?? "metadata table did not render a DataGrid");
+
+        grid.UpdateLayout();
+        var total = grid.Items.Count;
+
+        var enable = typeof(System.Windows.Controls.DataGrid).GetMethod(
+            "ShimSetRowVirtualization", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        if (enable?.Invoke(grid, [true]) as bool? != true)
+            return SelectOffscreenSnapshot(total, -1, false, false, false, -1, "could not enable row virtualization");
+        grid.UpdateLayout();
+
+        if (total <= 0)
+            return SelectOffscreenSnapshot(total, -1, false, false, false, -1, "empty table");
+
+        // Pin a small top viewport so the target is off-screen.
+        var presenter = FindDescendant<System.Windows.Controls.Primitives.DataGridRowsPresenter>(grid);
+        typeof(System.Windows.Controls.VirtualizingStackPanel).GetMethod(
+            "ShimForceViewport", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?.Invoke(presenter, [0d, 500d]);
+        grid.UpdateLayout();
+
+        var targetIndex = Math.Min(total - 1, total / 2 + 300);
+        var targetItem = grid.Items[targetIndex];
+        var realizedBefore = grid.ItemContainerGenerator.ContainerFromItem(targetItem) is not null;
+
+        // The exact call Roma's metadata navigation makes.
+        ICSharpCode.ILSpy.ExtensionMethods.SelectItem(grid, targetItem!);
+
+        // Robust, virtualization-proof outcome: the engine selection points at the target,
+        // so the row shows selected whenever realized (now or after the scroll settles).
+        var engineSelected = ReferenceEquals(grid.SelectedItem, targetItem);
+        var container = grid.ItemContainerGenerator.ContainerFromItem(targetItem);
+        var realizedAndVisuallySelected = container is System.Windows.Controls.DataGridRow row && row.IsSelected;
+        var firstAfter = FirstRealizedRowIndex(grid);
+        return SelectOffscreenSnapshot(total, targetIndex, realizedBefore, engineSelected, realizedAndVisuallySelected, firstAfter, null);
+    });
+
+    // Verifies keyboard navigation reaches virtualized off-screen rows (e.g. End / PageDown):
+    // MoveSelectionToIndex selects + scrolls to an item far outside the realized window.
+    [DevFlowAction("roma.probe.metadata-keyboard-offscreen", Description = "PROBE: enable virtualization, keyboard-navigate to an off-screen row, verify it selects + scrolls into view.")]
+    public static string ProbeMetadataKeyboardOffscreen(string assemblyPath, string tableName) => RunOnUi(page =>
+    {
+        var grid = OpenMetadataGrid(page, assemblyPath, tableName, out var error);
+        if (grid is null)
+            return SelectOffscreenSnapshot(0, -1, false, false, false, -1, error ?? "metadata table did not render a DataGrid");
+
+        grid.UpdateLayout();
+        var total = grid.Items.Count;
+        var enable = typeof(System.Windows.Controls.DataGrid).GetMethod(
+            "ShimSetRowVirtualization", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        if (enable?.Invoke(grid, [true]) as bool? != true || total <= 0)
+            return SelectOffscreenSnapshot(total, -1, false, false, false, -1, "could not enable row virtualization / empty");
+        grid.UpdateLayout();
+
+        var presenter = FindDescendant<System.Windows.Controls.Primitives.DataGridRowsPresenter>(grid);
+        typeof(System.Windows.Controls.VirtualizingStackPanel).GetMethod(
+            "ShimForceViewport", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?.Invoke(presenter, [0d, 500d]);
+        grid.UpdateLayout();
+
+        var targetIndex = Math.Min(total - 1, total / 2 + 300);
+        var realizedBefore = grid.ItemContainerGenerator.ContainerFromItem(grid.Items[targetIndex]) is not null;
+
+        // Drive the row-navigation keyboard path (Home/End/PageDown all route through this).
+        typeof(System.Windows.Controls.DataGrid).GetMethod(
+            "MoveSelectionToIndex", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+            ?.Invoke(grid, [targetIndex]);
+
+        var engineSelected = ReferenceEquals(grid.SelectedItem, grid.Items[targetIndex]);
+        var container = grid.ItemContainerGenerator.ContainerFromItem(grid.Items[targetIndex]);
+        var visuallySelected = container is System.Windows.Controls.DataGridRow row && row.IsSelected;
+        return SelectOffscreenSnapshot(total, targetIndex, realizedBefore, engineSelected, visuallySelected, FirstRealizedRowIndex(grid), null);
+    });
+
+    static string SelectOffscreenSnapshot(int total, int targetIndex, bool realizedBefore, bool engineSelected, bool visuallySelected, int firstAfter, string? error)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append('{');
+        sb.Append($"\"total\":{total},");
+        sb.Append($"\"targetIndex\":{targetIndex},");
+        sb.Append($"\"realizedBefore\":{(realizedBefore ? "true" : "false")},");
+        sb.Append($"\"engineSelected\":{(engineSelected ? "true" : "false")},");
+        sb.Append($"\"visuallySelected\":{(visuallySelected ? "true" : "false")},");
+        sb.Append($"\"firstAfter\":{firstAfter}");
+        if (error is not null) sb.Append(',').Append($"\"error\":{Json(error)}");
+        sb.Append('}');
+        return sb.ToString();
+    }
+
+    static string ScrollIntoViewSnapshot(int total, int targetIndex, bool realizedBefore, bool realizedAfter, int firstAfter, string? error)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append('{');
+        sb.Append($"\"total\":{total},");
+        sb.Append($"\"targetIndex\":{targetIndex},");
+        sb.Append($"\"realizedBefore\":{(realizedBefore ? "true" : "false")},");
+        sb.Append($"\"realizedAfter\":{(realizedAfter ? "true" : "false")},");
+        sb.Append($"\"firstAfter\":{firstAfter},");
+        // Proof of BringIndexIntoView: after scrolling, the target is realized AND the realized
+        // window now starts at the target (within the cache band) — i.e. it was brought to the
+        // top of the viewport. (realizedBefore is informational: the probe layout's effective
+        // viewport can be large enough to already realize the target.)
+        var broughtToTarget = realizedAfter && firstAfter >= 0 && targetIndex - firstAfter is >= 0 and <= 30;
+        sb.Append($"\"broughtToTarget\":{(broughtToTarget ? "true" : "false")}");
         if (error is not null) sb.Append(',').Append($"\"error\":{Json(error)}");
         sb.Append('}');
         return sb.ToString();
