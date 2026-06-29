@@ -331,6 +331,352 @@ public sealed partial class MainPage
         return sb.ToString();
     }
 
+    // ── HEX-filter probe helpers ──────────────────────────────────────────────
+    // Reconstructed support for ProbeMetadataHexFilter / ProbeMetadataHexFilterTyping.
+    // Visual-tree + automation helpers stay generic; filter-state inspection uses the
+    // same reflection approach the resize probes use for the shim's non-public members.
+
+    // First column whose DataGridExtensions filter editor is a HEX control, else -1.
+    static int FirstHexFilterColumnIndex(System.Windows.Controls.DataGrid grid)
+    {
+        for (var i = 0; i < grid.Columns.Count; i++)
+        {
+            if (DataGridExtensions.DataGridFilterColumn.GetTemplate(grid.Columns[i])
+                    is DataGridExtensions.FilterControlTemplate template
+                && template.Kind == DataGridExtensions.FilterKind.Hex)
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    // Items backing the DataGridRow containers currently realized in the visual tree
+    // (post-filter), in display order.
+    static System.Collections.Generic.List<object?> RealizedRowItems(System.Windows.Controls.DataGrid grid)
+    {
+        var items = new System.Collections.Generic.List<object?>();
+        foreach (var row in FindDescendants<System.Windows.Controls.DataGridRow>(grid))
+        {
+            items.Add(row.Item);
+        }
+
+        return items;
+    }
+
+    // Number of columns with an active content filter. The filter state lives in the
+    // shim's internal DataGridFilter.State.ColumnFilters; reflect into it (Roma.Host is
+    // not in LeXtudio.Windows' InternalsVisibleTo list).
+    static int ActiveColumnFilterCount(System.Windows.Controls.DataGrid grid)
+    {
+        var getState = typeof(DataGridExtensions.DataGridFilter).GetMethod(
+            "GetState",
+            System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic);
+        var state = getState?.Invoke(null, [grid]);
+        if (state is null)
+            return 0;
+
+        var field = state.GetType().GetField(
+            "ColumnFilters",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        if (field?.GetValue(state) is not System.Collections.IDictionary filters)
+            return 0;
+
+        var count = 0;
+        foreach (var value in filters.Values)
+        {
+            if (value is not null)
+                count++;
+        }
+
+        return count;
+    }
+
+    // First visual descendant of type T (including the root itself), depth-first.
+    static T? FindDescendant<T>(object? root) where T : class
+    {
+        if (root is not Microsoft.UI.Xaml.DependencyObject start)
+            return null;
+        if (start is T self)
+            return self;
+        return FindDescendants<T>(start).FirstOrDefault();
+    }
+
+    // All visual descendants of type T (excluding the root), depth-first.
+    static System.Collections.Generic.IEnumerable<T> FindDescendants<T>(Microsoft.UI.Xaml.DependencyObject? root)
+        where T : class
+    {
+        if (root is null)
+            yield break;
+
+        var childCount = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChildrenCount(root);
+        for (var i = 0; i < childCount; i++)
+        {
+            var child = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetChild(root, i);
+            if (child is T match)
+                yield return match;
+            foreach (var descendant in FindDescendants<T>(child))
+                yield return descendant;
+        }
+    }
+
+    // True if no ancestor (or the element itself) is collapsed.
+    static bool IsAncestorVisible(Microsoft.UI.Xaml.FrameworkElement element)
+    {
+        Microsoft.UI.Xaml.DependencyObject? current = element;
+        while (current is not null)
+        {
+            if (current is Microsoft.UI.Xaml.UIElement ue
+                && ue.Visibility == Microsoft.UI.Xaml.Visibility.Collapsed)
+            {
+                return false;
+            }
+
+            current = Microsoft.UI.Xaml.Media.VisualTreeHelper.GetParent(current);
+        }
+
+        return true;
+    }
+
+    // Invoke a Button the way the UI automation layer would (raises Click).
+    static bool InvokeButtonClick(Microsoft.UI.Xaml.Controls.Button button)
+    {
+        var peer = Microsoft.UI.Xaml.Automation.Peers.FrameworkElementAutomationPeer.CreatePeerForElement(button);
+        if (peer?.GetPattern(Microsoft.UI.Xaml.Automation.Peers.PatternInterface.Invoke)
+                is Microsoft.UI.Xaml.Automation.Provider.IInvokeProvider invoke)
+        {
+            invoke.Invoke();
+            return true;
+        }
+
+        return false;
+    }
+
+    // Set a TextBox's text the way real typing would, so the TextChanged handler fires.
+    static bool SetTextBoxTextThroughAutomation(Microsoft.UI.Xaml.Controls.TextBox textBox, string text)
+    {
+        var peer = Microsoft.UI.Xaml.Automation.Peers.FrameworkElementAutomationPeer.CreatePeerForElement(textBox);
+        if (peer?.GetPattern(Microsoft.UI.Xaml.Automation.Peers.PatternInterface.Value)
+                is Microsoft.UI.Xaml.Automation.Provider.IValueProvider value)
+        {
+            value.SetValue(text);
+            return true;
+        }
+
+        textBox.Text = text;
+        return true;
+    }
+
+    static string MetadataHexFilterSnapshot(
+        System.Windows.Controls.DataGrid? grid,
+        int columnIndex,
+        string? header,
+        string? filterText,
+        int before,
+        int after,
+        int matching,
+        int activeFilters,
+        int filterMatches,
+        bool buttonClicked,
+        bool inputApplied,
+        string? error)
+    {
+        _ = grid;
+        var sb = new System.Text.StringBuilder();
+        sb.Append('{');
+        sb.Append($"\"rendered\":{(grid is not null ? "true" : "false")},");
+        sb.Append($"\"columnIndex\":{columnIndex},");
+        sb.Append($"\"header\":{Json(header)},");
+        sb.Append($"\"filterText\":{Json(filterText)},");
+        sb.Append($"\"before\":{before},");
+        sb.Append($"\"after\":{after},");
+        sb.Append($"\"matching\":{matching},");
+        sb.Append($"\"activeFilters\":{activeFilters},");
+        sb.Append($"\"filterMatches\":{filterMatches},");
+        sb.Append($"\"buttonClicked\":{(buttonClicked ? "true" : "false")},");
+        sb.Append($"\"inputApplied\":{(inputApplied ? "true" : "false")}");
+        if (error is not null) sb.Append(',').Append($"\"error\":{Json(error)}");
+        sb.Append('}');
+        return sb.ToString();
+    }
+
+    // ── Row virtualization probe (Session 119, Slice 5) ───────────────────────
+    // Opens a (large) metadata table, switches the DataGrid to the virtualized
+    // DataGridRowsPresenter path, and reports how many rows are realized vs total —
+    // the proof that only a viewport-sized window materializes. Then scrolls and
+    // reports the window shifted.
+    [DevFlowAction("roma.probe.metadata-virtualization", Description = "PROBE: enable row virtualization on a metadata table; report realized-vs-total row windowing.")]
+    public static string ProbeMetadataVirtualization(string assemblyPath, string tableName) => RunOnUi(page =>
+    {
+        var grid = OpenMetadataGrid(page, assemblyPath, tableName, out var error);
+        if (grid is null)
+            return VirtualizationSnapshot(0, 0, 0, -1, -1, 0, 0, error ?? "metadata table did not render a DataGrid");
+
+        grid.UpdateLayout();
+        var total = grid.Items.Count;
+
+        // Enable the virtualized DataGridRowsPresenter path (internal member; reflect in).
+        var enable = typeof(System.Windows.Controls.DataGrid).GetMethod(
+            "ShimSetRowVirtualization",
+            System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        var enabled = enable?.Invoke(grid, [true]) as bool? == true;
+        if (!enabled)
+            return VirtualizationSnapshot(total, 0, 0, -1, -1, 0, 0, "could not enable row virtualization");
+
+        grid.UpdateLayout();
+
+        var realizedInitial = RealizedVisibleRowCount(grid);
+        var firstInitial = FirstRealizedRowIndex(grid);
+        var headerCells = FindDescendants<System.Windows.Controls.Primitives.DataGridColumnHeader>(grid).Count();
+
+        // Drive the realized window to the middle deterministically (the engine's
+        // viewport seam), avoiding async scroll/viewport-callback timing. The window
+        // should shift to rows around the middle index.
+        var realizedAfter = realizedInitial;
+        var firstAfter = firstInitial;
+        var presenter = FindDescendant<System.Windows.Controls.Primitives.DataGridRowsPresenter>(grid);
+        var extentReport = presenter?.DesiredSize.Height ?? 0d;
+        if (presenter is not null)
+        {
+            var extent = presenter.DesiredSize.Height;
+            // Use a fixed, screen-sized viewport so the window-shift is isolated from
+            // layout-dependent ScrollViewer.ViewportHeight (which can read unbounded here).
+            const double viewportHeight = 500d;
+
+            var forceViewport = typeof(System.Windows.Controls.VirtualizingStackPanel).GetMethod(
+                "ShimForceViewport",
+                System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+            forceViewport?.Invoke(presenter, [extent / 2, viewportHeight]);
+            grid.UpdateLayout();
+
+            realizedAfter = RealizedVisibleRowCount(grid);
+            firstAfter = FirstRealizedRowIndex(grid);
+        }
+
+        return VirtualizationSnapshot(total, realizedInitial, realizedAfter, firstInitial, firstAfter, extentReport, headerCells, null);
+    });
+
+    // Verifies the virtualized presenter realizes over the FILTERED view (Slice 8): apply a
+    // hex column filter, then confirm the realization count tracks the filter-matching count.
+    [DevFlowAction("roma.probe.metadata-virtualization-filter", Description = "PROBE: enable virtualization, apply a column filter, verify the realized view tracks the filtered item count.")]
+    public static string ProbeMetadataVirtualizationFilter(string assemblyPath, string tableName) => RunOnUi(page =>
+    {
+        var grid = OpenMetadataGrid(page, assemblyPath, tableName, out var error);
+        if (grid is null)
+            return VirtualizationFilterSnapshot(0, 0, 0, 0, error ?? "metadata table did not render a DataGrid");
+
+        grid.UpdateLayout();
+        var total = grid.Items.Count;
+
+        var enable = typeof(System.Windows.Controls.DataGrid).GetMethod(
+            "ShimSetRowVirtualization", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic);
+        if (enable?.Invoke(grid, [true]) as bool? != true)
+            return VirtualizationFilterSnapshot(total, 0, 0, 0, "could not enable row virtualization");
+        grid.UpdateLayout();
+
+        var viewBefore = ShimRealizationCount(grid);
+
+        // Pick a hex column and filter on the first row's exact value (matches a small subset).
+        var hexColumnIndex = FirstHexFilterColumnIndex(grid);
+        if (hexColumnIndex < 0)
+            return VirtualizationFilterSnapshot(total, viewBefore, viewBefore, 0, "no HEX filter column found");
+        var column = grid.Columns[hexColumnIndex];
+        var bindingPath = column is System.Windows.Controls.DataGridBoundColumn bound
+            ? (bound.Binding as System.Windows.Data.Binding)?.Path?.Path : null;
+        var firstValue = string.IsNullOrEmpty(bindingPath) ? null
+            : grid.Items.Cast<object?>().Select(i => ReadBindingValue(i, bindingPath)).FirstOrDefault(v => v is not null);
+        if (firstValue is null)
+            return VirtualizationFilterSnapshot(total, viewBefore, viewBefore, 0, "HEX filter column has no values");
+        var filterText = string.Format("{0:x8}", firstValue);
+
+        // Apply the filter through the shim's internal filter state (reflection — Roma.Host
+        // is not in InternalsVisibleTo), then invalidate the realization view.
+        var filterType = typeof(DataGridExtensions.DataGridFilter);
+        var state = filterType.GetMethod("GetState", System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.NonPublic)?.Invoke(null, [grid]);
+        if (state is null)
+            return VirtualizationFilterSnapshot(total, viewBefore, viewBefore, 0, "filter state unavailable");
+        state.GetType().GetField("IsAutoFilterEnabled")?.SetValue(state, true);
+        if (state.GetType().GetField("ColumnFilters", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.GetValue(state) is System.Collections.IDictionary filters)
+            filters[column] = new DataGridExtensions.HexContentFilter(filterText);
+
+        typeof(System.Windows.Controls.DataGrid).GetMethod(
+            "ShimInvalidateRealizationView", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.Invoke(grid, null);
+        grid.UpdateLayout();
+
+        var expected = grid.Items.Cast<object?>().Count(i => DataGridExtensions.DataGridFilter.MatchesAllFilters(grid, i));
+        var viewAfter = ShimRealizationCount(grid);
+        return VirtualizationFilterSnapshot(total, viewBefore, viewAfter, expected, null);
+    });
+
+    static int ShimRealizationCount(System.Windows.Controls.DataGrid grid)
+        => typeof(System.Windows.Controls.DataGrid).GetProperty(
+               "ShimRealizationCount", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)
+               ?.GetValue(grid) as int? ?? -1;
+
+    static string VirtualizationFilterSnapshot(int total, int viewBefore, int viewAfter, int expected, string? error)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append('{');
+        sb.Append($"\"total\":{total},");
+        sb.Append($"\"viewBefore\":{viewBefore},");
+        sb.Append($"\"viewAfter\":{viewAfter},");
+        sb.Append($"\"expected\":{expected},");
+        sb.Append($"\"honorsFilter\":{(viewAfter == expected && viewAfter < total ? "true" : "false")}");
+        if (error is not null) sb.Append(',').Append($"\"error\":{Json(error)}");
+        sb.Append('}');
+        return sb.ToString();
+    }
+
+    // Count of DataGridRow containers currently visible (excludes collapsed/recycled).
+    static int RealizedVisibleRowCount(System.Windows.Controls.DataGrid grid)
+    {
+        var count = 0;
+        foreach (var row in FindDescendants<System.Windows.Controls.DataGridRow>(grid))
+        {
+            if (row.Visibility == Microsoft.UI.Xaml.Visibility.Visible)
+                count++;
+        }
+
+        return count;
+    }
+
+    // Smallest item index among the realized (visible) rows, or -1 if none.
+    static int FirstRealizedRowIndex(System.Windows.Controls.DataGrid grid)
+    {
+        var first = -1;
+        foreach (var row in FindDescendants<System.Windows.Controls.DataGridRow>(grid))
+        {
+            if (row.Visibility != Microsoft.UI.Xaml.Visibility.Visible || row.Item is null)
+                continue;
+            var index = grid.Items.IndexOf(row.Item);
+            if (index >= 0 && (first < 0 || index < first))
+                first = index;
+        }
+
+        return first;
+    }
+
+    static string VirtualizationSnapshot(
+        int total, int realizedInitial, int realizedAfterScroll, int firstInitial, int firstAfterScroll, double extent, int headerCells, string? error)
+    {
+        var rowHeight = total > 0 ? extent / total : 0d;
+        var sb = new System.Text.StringBuilder();
+        sb.Append('{');
+        sb.Append($"\"total\":{total},");
+        sb.Append($"\"realizedInitial\":{realizedInitial},");
+        sb.Append($"\"realizedAfterScroll\":{realizedAfterScroll},");
+        sb.Append($"\"firstInitial\":{firstInitial},");
+        sb.Append($"\"firstAfterScroll\":{firstAfterScroll},");
+        sb.Append($"\"extent\":{extent.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture)},");
+        sb.Append($"\"rowHeight\":{rowHeight.ToString("0.###", System.Globalization.CultureInfo.InvariantCulture)},");
+        sb.Append($"\"headerCells\":{headerCells},");
+        sb.Append($"\"virtualized\":{(total > 0 && realizedInitial > 0 && realizedInitial < total ? "true" : "false")}");
+        if (error is not null) sb.Append(',').Append($"\"error\":{Json(error)}");
+        sb.Append('}');
+        return sb.ToString();
+    }
+
     [DevFlowAction("roma.probe.metadata-header-row-details", Description = "PROBE: open PE header details; returns row-details DataGrid snapshot JSON.")]
     public static string ProbeMetadataHeaderRowDetails(string assemblyPath, string headerName) => RunOnUi(page =>
     {
