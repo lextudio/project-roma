@@ -522,6 +522,8 @@ public sealed partial class MainPage : Page
                 if (entry is Roma.Host.Analyzers.RomaAnalyzeContextMenuCommand)
                     dockWorkspace.ShowToolPane("analyzerPane");
             });
+        ICSharpCode.ILSpy.ContextMenuProvider.AttachDataGridContextMenu =
+            grid => new Roma.Host.ContextMenu.RomaDataGridContextMenu().Attach(grid);
         // Select the icon theme before the assembly tree is built so its glyphs use the correct
         // (light/dark) SVG variant from the start (matches the persisted theme).
         ICSharpCode.ILSpy.Images.IsDark = IsDarkTheme(_assemblyContext.SettingsService.SessionSettings.Theme);

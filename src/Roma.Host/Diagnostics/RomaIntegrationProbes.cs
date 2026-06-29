@@ -182,6 +182,155 @@ public sealed partial class MainPage
         return MetadataGridSnapshot(page, target.Text?.ToString(), table.ToString());
     });
 
+    [DevFlowAction("roma.probe.metadata-hex-filter", Description = "PROBE: open a metadata table, trigger a HEX column filter control, and return filtered row state.")]
+    public static string ProbeMetadataHexFilter(string assemblyPath, string tableName) => RunOnUi(page =>
+    {
+        var grid = OpenMetadataGrid(page, assemblyPath, tableName, out var error);
+        if (grid is null)
+            return MetadataHexFilterSnapshot(null, -1, null, null, 0, 0, 0, 0, 0, false, false, error ?? "metadata table did not render a DataGrid");
+
+        grid.UpdateLayout();
+        var before = RealizedRowItems(grid).Count;
+        var hexColumnIndex = FirstHexFilterColumnIndex(grid);
+        if (hexColumnIndex < 0)
+            return MetadataHexFilterSnapshot(grid, -1, null, null, before, before, 0, 0, 0, false, false, "no HEX filter column found");
+
+        var column = grid.Columns[hexColumnIndex];
+        var bindingPath = column is System.Windows.Controls.DataGridBoundColumn boundColumn
+            ? (boundColumn.Binding as System.Windows.Data.Binding)?.Path?.Path
+            : null;
+        if (string.IsNullOrEmpty(bindingPath))
+            return MetadataHexFilterSnapshot(grid, hexColumnIndex, column.Header?.ToString(), null, before, before, 0, 0, 0, false, false, "HEX filter column has no binding path");
+
+        var firstValue = grid.Items.Cast<object?>()
+            .Select(item => ReadBindingValue(item, bindingPath))
+            .FirstOrDefault(value => value is not null);
+        if (firstValue is null)
+            return MetadataHexFilterSnapshot(grid, hexColumnIndex, column.Header?.ToString(), null, before, before, 0, 0, 0, false, false, "HEX filter column has no values");
+
+        var filterText = string.Format("{0:x8}", firstValue);
+        var header = MetadataHeaderAt(grid, hexColumnIndex);
+        if (header is null)
+            return MetadataHexFilterSnapshot(grid, hexColumnIndex, column.Header?.ToString(), filterText, before, before, 0, 0, 0, false, false, "metadata header was not realized");
+
+        var filterButton = FindDescendant<Microsoft.UI.Xaml.Controls.Button>(header.Content);
+        if (filterButton is null)
+            return MetadataHexFilterSnapshot(grid, hexColumnIndex, column.Header?.ToString(), filterText, before, before, 0, 0, 0, false, false, "HEX filter button was not realized");
+
+        var clicked = InvokeButtonClick(filterButton);
+        var textBox = FindDescendant<Microsoft.UI.Xaml.Controls.TextBox>(header.Content);
+        if (textBox is null)
+            return MetadataHexFilterSnapshot(grid, hexColumnIndex, column.Header?.ToString(), filterText, before, before, 0, 0, 0, clicked, false, "HEX filter text box was not realized");
+
+        var inputVisible = textBox.Visibility == Microsoft.UI.Xaml.Visibility.Visible
+            && IsAncestorVisible(textBox);
+        var textEntered = SetTextBoxTextThroughAutomation(textBox, filterText);
+        if (textBox.Tag is Action applyFilter)
+        {
+            applyFilter();
+        }
+
+        grid.UpdateLayout();
+
+        var filteredItems = RealizedRowItems(grid);
+        var after = filteredItems.Count;
+        var activeFilters = ActiveColumnFilterCount(grid);
+        var filterMatches = grid.Items.Cast<object?>()
+            .Count(item => DataGridExtensions.DataGridFilter.MatchesAllFilters(grid, item));
+        var matching = filteredItems.Count(item =>
+        {
+            var value = ReadBindingValue(item, bindingPath);
+            return value is not null
+                && string.Format("{0:x8}", value).IndexOf(filterText, StringComparison.OrdinalIgnoreCase) >= 0;
+        });
+
+        return MetadataHexFilterSnapshot(
+            grid,
+            hexColumnIndex,
+            column.Header?.ToString(),
+            filterText,
+            before,
+            after,
+            matching,
+            activeFilters,
+            filterMatches,
+            clicked,
+            inputVisible && textEntered,
+            null);
+    });
+
+    [DevFlowAction("roma.probe.metadata-hex-filter-typing", Description = "PROBE: verifies HEX filter TextBox survives user typing (TextChanged) without being destroyed by a grid rebuild.")]
+    public static string ProbeMetadataHexFilterTyping(string assemblyPath, string tableName) => RunOnUi(page =>
+    {
+        var grid = OpenMetadataGrid(page, assemblyPath, tableName, out var error);
+        if (grid is null)
+            return MetadataHexFilterTypingSnapshot(false, false, false, false, error ?? "metadata table did not render a DataGrid");
+
+        grid.UpdateLayout();
+
+        var hexColumnIndex = FirstHexFilterColumnIndex(grid);
+        if (hexColumnIndex < 0)
+            return MetadataHexFilterTypingSnapshot(false, false, false, false, "no HEX filter column found");
+
+        var column = grid.Columns[hexColumnIndex];
+        var bindingPath = column is System.Windows.Controls.DataGridBoundColumn bc
+            ? (bc.Binding as System.Windows.Data.Binding)?.Path?.Path
+            : null;
+        var firstValue = string.IsNullOrEmpty(bindingPath) ? null
+            : grid.Items.Cast<object?>()
+                .Select(item => ReadBindingValue(item, bindingPath))
+                .FirstOrDefault(v => v is not null);
+
+        // Step 1 — open the filter panel and get the TextBox.
+        var header = MetadataHeaderAt(grid, hexColumnIndex);
+        var filterButton = header is null ? null : FindDescendant<Microsoft.UI.Xaml.Controls.Button>(header.Content);
+        if (filterButton is not null)
+            InvokeButtonClick(filterButton);
+
+        var textBox = header is null ? null : FindDescendant<Microsoft.UI.Xaml.Controls.TextBox>(header.Content);
+        if (textBox is null)
+            return MetadataHexFilterTypingSnapshot(false, false, false, false, "HEX filter text box was not realized before typing");
+
+        // Step 2 — simulate typing one character via TextChanged.
+        // In the OLD code this called BuildShimVisualTree(), destroying the TextBox.
+        // In the FIXED code it calls RefreshFilteredRows(), leaving the header intact.
+        var firstChar = firstValue is not null ? string.Format("{0:x8}", firstValue)[0].ToString() : "0";
+        SetTextBoxTextThroughAutomation(textBox, firstChar);
+
+        // Step 3 — re-fetch the header and look for a TextBox.
+        // After RefreshFilteredRows the header is still there; after BuildShimVisualTree it is gone.
+        var headerAfter = MetadataHeaderAt(grid, hexColumnIndex);
+        var textBoxAfter = headerAfter is null ? null
+            : FindDescendant<Microsoft.UI.Xaml.Controls.TextBox>(headerAfter.Content);
+
+        var textBoxSurvived = textBoxAfter is not null;
+        var textPreserved   = textBoxAfter is not null && textBoxAfter.Text == firstChar;
+        var filterActive    = DataGridExtensions.DataGridFilter.GetIsAutoFilterEnabled(grid)
+                              && ActiveColumnFilterCount(grid) > 0;
+        // Original TextBox reference should still be in the live tree (same object, not replaced).
+        var sameInstance    = ReferenceEquals(textBoxAfter, textBox);
+
+        return MetadataHexFilterTypingSnapshot(textBoxSurvived, textPreserved, filterActive, sameInstance, null);
+    });
+
+    static string MetadataHexFilterTypingSnapshot(
+        bool textBoxSurvived,
+        bool textPreserved,
+        bool filterActive,
+        bool sameInstance,
+        string? error)
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append('{');
+        sb.Append($"\"textBoxSurvived\":{(textBoxSurvived ? "true" : "false")},");
+        sb.Append($"\"textPreserved\":{(textPreserved ? "true" : "false")},");
+        sb.Append($"\"filterActive\":{(filterActive ? "true" : "false")},");
+        sb.Append($"\"sameInstance\":{(sameInstance ? "true" : "false")}");
+        if (error is not null) sb.Append(',').Append($"\"error\":{Json(error)}");
+        sb.Append('}');
+        return sb.ToString();
+    }
+
     [DevFlowAction("roma.probe.metadata-header-row-details", Description = "PROBE: open PE header details; returns row-details DataGrid snapshot JSON.")]
     public static string ProbeMetadataHeaderRowDetails(string assemblyPath, string headerName) => RunOnUi(page =>
     {

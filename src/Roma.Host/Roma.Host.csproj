@@ -288,6 +288,8 @@
     <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\Heaps\*.cs" Link="ILSpy\Metadata\Heaps\%(Filename)%(Extension)" />
     <!-- DebugTables: PDB/portable-PDB debug metadata table nodes. -->
     <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\DebugTables\*.cs" Link="ILSpy\Metadata\DebugTables\%(Filename)%(Extension)" />
+    <!-- GoToTokenCommand + CopyCommand: IContextMenuEntry implementations used by RomaDataGridContextMenu. -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Metadata\GoToTokenCommand.cs" Link="ILSpy\Metadata\GoToTokenCommand.cs" />
     <!-- ContextMenuEntry: IContextMenuEntry, TextViewContext, ExportContextMenuEntryAttribute,
          ContextMenuProvider. Requires System.Composition.AttributedModel + GetExportProvider
          (TomsToolbox.Wpf.Uno) + SharpTreeView/DecompilerTextView : Control (stubs updated). -->

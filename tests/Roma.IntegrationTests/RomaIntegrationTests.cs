@@ -554,4 +554,49 @@ public sealed class RomaIntegrationTests
         Assert.True(hasFilters.Count(f => f) >= 9,
             $"expected at least 9 columns with filter buttons, got {hasFilters.Count(f => f)}");
     }
+
+    [Fact]
+    public async Task MetadataTable_HexColumnFilterControlFiltersRows()
+    {
+        await _app.InvokeAsync("roma.probe.clear");
+        var assemblyPath = typeof(System.Net.Http.HttpClient).Assembly.Location;
+
+        var state = await _app.InvokeAsync("roma.probe.metadata-hex-filter", assemblyPath, "TypeDef");
+
+        var raw = state.ToString();
+        Assert.False(state.TryGetProperty("error", out _), $"metadata HEX filter probe failed: {raw}");
+        Assert.True(state.GetProperty("hasGrid").GetBoolean(), $"metadata table should render a DataGrid: {raw}");
+        Assert.True(state.GetProperty("autoFilterEnabled").GetBoolean(), $"auto-filter should be enabled: {raw}");
+        Assert.True(state.GetProperty("filterButtonClicked").GetBoolean(), $"HEX filter button should be triggered: {raw}");
+        Assert.True(state.GetProperty("filterInputVisible").GetBoolean(), $"HEX filter input should be visible after button click: {raw}");
+        Assert.True(state.GetProperty("beforeRows").GetInt32() > state.GetProperty("afterRows").GetInt32(),
+            $"HEX filter should reduce visible rows: {raw}");
+        Assert.True(state.GetProperty("afterRows").GetInt32() > 0, $"HEX filter should keep matching rows: {raw}");
+        Assert.Equal(state.GetProperty("afterRows").GetInt32(), state.GetProperty("matchingRows").GetInt32());
+        Assert.False(string.IsNullOrWhiteSpace(state.GetProperty("filterText").GetString()), $"HEX filter text should be reported: {raw}");
+    }
+
+    // Regression test: typing in a HEX filter TextBox must not destroy the TextBox.
+    // Root cause was BuildShimVisualTree() being called from TextChanged, which cleared
+    // host.Children and rebuilt the header row, losing focus and the TextBox instance.
+    // Fix: filter TextChanged now calls RefreshFilteredRows() which skips the header.
+    [Fact]
+    public async Task MetadataTable_HexFilterTextBox_SurvivesTyping()
+    {
+        await _app.InvokeAsync("roma.probe.clear");
+        var assemblyPath = typeof(System.Net.Http.HttpClient).Assembly.Location;
+
+        var state = await _app.InvokeAsync("roma.probe.metadata-hex-filter-typing", assemblyPath, "TypeDef");
+
+        var raw = state.ToString();
+        Assert.False(state.TryGetProperty("error", out _), $"hex filter typing probe failed: {raw}");
+        Assert.True(state.GetProperty("textBoxSurvived").GetBoolean(),
+            $"HEX filter TextBox must still exist after typing (TextChanged must not rebuild the header): {raw}");
+        Assert.True(state.GetProperty("textPreserved").GetBoolean(),
+            $"HEX filter TextBox must show the typed text after TextChanged: {raw}");
+        Assert.True(state.GetProperty("filterActive").GetBoolean(),
+            $"HEX filter must be active in ColumnFilters after typing: {raw}");
+        Assert.True(state.GetProperty("sameInstance").GetBoolean(),
+            $"HEX filter TextBox must be the same object after typing (not recreated): {raw}");
+    }
 }
