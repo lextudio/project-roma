@@ -12,7 +12,6 @@ using System.Windows;
 using System.Windows.Controls;
 
 using ICSharpCode.ILSpy;
-using ICSharpCode.ILSpy.Commands;  // GoToTokenCommand, CopyCommand (in GoToTokenCommand.cs)
 
 using Microsoft.UI.Xaml.Controls.Primitives;
 using Microsoft.UI.Xaml.Input;
@@ -22,10 +21,7 @@ namespace Roma.Host.ContextMenu;
 internal sealed class RomaDataGridContextMenu
 {
     private readonly RomaTreeContextMenu _menu = new(
-    [
-        new GoToTokenCommand(),
-        new CopyCommand(),
-    ]);
+        ICSharpCode.ILSpy.App.ExportProvider.GetExports<IContextMenuEntry, IContextMenuEntryMetadata>());
 
     /// <summary>
     /// Hooks <paramref name="grid"/>'s RightTapped event so that right-clicking a cell

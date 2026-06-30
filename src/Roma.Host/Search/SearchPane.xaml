@@ -37,7 +37,7 @@
         <ComboBox.ItemTemplate>
           <DataTemplate>
             <StackPanel Orientation="Horizontal" Spacing="4" VerticalAlignment="Center">
-              <Image Width="14" Height="14" Source="{Binding Icon}" VerticalAlignment="Center"/>
+              <Image Width="14" Height="14" Source="{Binding Image}" VerticalAlignment="Center"/>
               <TextBlock Text="{Binding Name}" VerticalAlignment="Center"/>
             </StackPanel>
           </DataTemplate>

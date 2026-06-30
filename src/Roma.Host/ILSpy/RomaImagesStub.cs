@@ -4,8 +4,8 @@
 // loads the ILSpy SVGs shipped under ILSpyIcons/ (Content, copied to output) directly as
 // WinUI SvgImageSource handles — the global ImageSource alias points at the WinUI type, so
 // these render anywhere a linked node binds its Icon. Member names mirror upstream Images.*
-// so linked tree nodes resolve unchanged; Roma's own icon code (RomaTreeIconProvider,
-// RomaSearchResultFactory) sources its glyphs from here too instead of duplicating URIs.
+// so linked tree nodes resolve unchanged; Roma's own tree icon adapter sources its glyphs
+// from here too instead of duplicating URIs.
 //
 // ILSpy composes a base glyph with an access/static/extension overlay into a single image
 // via DrawingGroup. WinUI can't composite SvgImageSource, so Roma renders the overlay as a

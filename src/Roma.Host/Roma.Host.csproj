@@ -38,7 +38,7 @@
       Svg;
     </UnoFeatures>
     <NoWarn>$(NoWarn);CA1416;CA1016;CS0169;CS8600;CS8604;CS8618;CS8603;CS8601;CS8602;CS8605;CS8612;CS8621;CS8766;CS8620;CS8767;CS8622;CS8625</NoWarn>
-    <UseNuGetPackages>false</UseNuGetPackages>
+    <UseNuGetPackages>true</UseNuGetPackages>
   </PropertyGroup>
 
   <ItemGroup>
@@ -172,6 +172,7 @@
     <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\ResourceNodes\ResourceEntryNode.cs" Link="ILSpy\TreeNodes\ResourceNodes\ResourceEntryNode.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\ResourceNodes\ResourcesFileTreeNode.cs" Link="ILSpy\TreeNodes\ResourceNodes\ResourcesFileTreeNode.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\Controls\TreeView\WpfWindowsDataObject.cs" Link="ILSpy\Controls\TreeView\WpfWindowsDataObject.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Controls\TreeView\WpfWindowsRoutedEventArgs.cs" Link="ILSpy\Controls\TreeView\WpfWindowsRoutedEventArgs.cs" />
     <!-- ExtensionMethods: SelectArray, GetTypeSystemWithCurrentOptionsOrNull, DPI transforms, visual-tree helpers.
          3 'return null' → 'return default' tweaks guarded by ROMA_UNO (nullable+alias on T : DependencyObject). -->
     <Compile Include="..\..\ext\ilspy\ILSpy\ExtensionMethods.cs" Link="ILSpy\ExtensionMethods.cs" />
@@ -308,6 +309,8 @@
     <Compile Include="..\..\ext\ilspy\ILSpy\Commands\GeneratePdbContextMenuEntry.cs" Link="ILSpy\Commands\GeneratePdbContextMenuEntry.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\Commands\CreateDiagramContextMenuEntry.cs" Link="ILSpy\Commands\CreateDiagramContextMenuEntry.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\Commands\SelectPdbContextMenuEntry.cs" Link="ILSpy\Commands\SelectPdbContextMenuEntry.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\ScopeSearchToAssembly.cs" Link="ILSpy\Commands\ScopeSearchToAssembly.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\ScopeSearchToNamespace.cs" Link="ILSpy\Commands\ScopeSearchToNamespace.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\Util\ResourceHelper.cs" Link="ILSpy\Util\ResourceHelper.cs" />
     <!-- Analyzers: tree nodes -->
     <Compile Include="..\..\ext\ilspy\ILSpy\Analyzers\AnalyzerTreeNode.cs" Link="ILSpy\Analyzers\AnalyzerTreeNode.cs" />
@@ -321,6 +324,10 @@
     <Compile Include="..\..\ext\ilspy\ILSpy\Analyzers\TreeNodes\AnalyzedEventTreeNode.cs" Link="ILSpy\Analyzers\TreeNodes\AnalyzedEventTreeNode.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\Analyzers\TreeNodes\AnalyzedAccessorTreeNode.cs" Link="ILSpy\Analyzers\TreeNodes\AnalyzedAccessorTreeNode.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\Analyzers\TreeNodes\AnalyzedModuleTreeNode.cs" Link="ILSpy\Analyzers\TreeNodes\AnalyzedModuleTreeNode.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Analyzers\AnalyzeCommand.cs" Link="ILSpy\Analyzers\AnalyzeCommand.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Analyzers\AnalyzerTreeViewModel.cs" Link="ILSpy\Analyzers\AnalyzerTreeViewModel.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Search\SearchPaneModel.cs" Link="ILSpy\Search\SearchPaneModel.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Search\SearchResultFactory.cs" Link="ILSpy\Search\SearchResultFactory.cs" />
     <!-- Options panels -->
     <Compile Include="..\..\ext\ilspy\ILSpy\Options\IOptionPage.cs" Link="ILSpy\Options\IOptionPage.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\Options\IOptionsMetadata.cs" Link="ILSpy\Options\IOptionsMetadata.cs" />
@@ -330,6 +337,7 @@
     <Compile Include="..\..\ext\ilspy\ILSpy\Options\DecompilerSettingsViewModel.cs" Link="ILSpy\Options\DecompilerSettingsViewModel.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\Options\MiscSettings.cs" Link="ILSpy\Options\MiscSettings.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\Options\MiscSettingsViewModel.cs" Link="ILSpy\Options\MiscSettingsViewModel.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Options\OptionsDialogViewModel.cs" Link="ILSpy\Options\OptionsDialogViewModel.cs" />
   </ItemGroup>
 
 </Project>

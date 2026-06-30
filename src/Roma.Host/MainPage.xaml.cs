@@ -81,11 +81,14 @@ public sealed partial class MainPage : Page
         var (_, context) = RomaAssemblyTree.BuildILSpyTree();
         _assemblyContext = context;
         RomaAnalyzerContext.Initialize(_assemblyContext.LanguageService, _assemblyContext.AssemblyList);
-        _analyzerViewModel = new RomaAnalyzerViewModel();
         // The real [Shared] AssemblyTreeModel is built by the export provider that
         // BuildILSpyTree installed as App.ExportProvider — reuse that single instance.
         _assemblyTreeModel = ICSharpCode.ILSpy.App.ExportProvider
             .GetExportedValue<ICSharpCode.ILSpy.AssemblyTree.AssemblyTreeModel>();
+        _analyzerViewModel = ICSharpCode.ILSpy.App.ExportProvider
+            .GetExportedValue<ICSharpCode.ILSpy.Analyzers.AnalyzerTreeViewModel>();
+        _searchPaneModel = ICSharpCode.ILSpy.App.ExportProvider
+            .GetExportedValue<ICSharpCode.ILSpy.Search.SearchPaneModel>();
         // The model owns selection/navigation/history; the WinUI surface reacts to it. When its
         // selection changes (tree click, reference jump, Back/Forward, startup restore), render the
         // newly-selected node and refresh the nav buttons. SelectedItem itself is only observable via
@@ -98,36 +101,14 @@ public sealed partial class MainPage : Page
         // upstream command here is a one-liner once its source is in the Roma build.
         var dockWorkspace = ICSharpCode.ILSpy.App.ExportProvider
             .GetExportedValue<ICSharpCode.ILSpy.Docking.DockWorkspace>();
-        var languageService = ICSharpCode.ILSpy.App.ExportProvider
-            .GetExportedValue<ICSharpCode.ILSpy.LanguageService>();
-        IContextMenuEntry[] entries =
-        [
-            new Roma.Host.Analyzers.RomaAnalyzeContextMenuCommand(_analyzerViewModel),
-            new ICSharpCode.ILSpy.CopyFullyQualifiedNameContextMenuEntry(),
-            new ICSharpCode.ILSpy.TreeNodes.RemoveAssembly(),
-            new ICSharpCode.ILSpy.TreeNodes.ReloadAssembly(_assemblyTreeModel),
-            new ICSharpCode.ILSpy.TreeNodes.LoadDependencies(_assemblyTreeModel),
-            new ICSharpCode.ILSpy.TreeNodes.AddToMainList(_assemblyTreeModel),
-            new Roma.Host.ContextMenu.RomaDecompileInNewTabEntry(node => OpenNodeInNewTab(node)),
-            new Roma.Host.ContextMenu.RomaScopeSearchToAssemblyEntry(assemblyName =>
-            {
-                _searchPane?.ScopeToAssembly(assemblyName);
-                dockWorkspace.ShowToolPane("searchPane");
-            }),
-            new ICSharpCode.ILSpy.TextView.SaveCodeContextMenuEntry(languageService, dockWorkspace),
-            new ICSharpCode.ILSpy.GeneratePdbContextMenuEntry(languageService, dockWorkspace),
-            new ICSharpCode.ILSpy.TextView.CreateDiagramContextMenuEntry(dockWorkspace),
-            new ICSharpCode.ILSpy.SelectPdbContextMenuEntry(_assemblyTreeModel),
-            new ICSharpCode.ILSpy.TreeNodes.OpenContainingFolder(),
-            new ICSharpCode.ILSpy.TreeNodes.OpenCmdHere(),
-            new ICSharpCode.ILSpy.SearchMsdnContextMenuEntry(),
-        ];
         _treeContextMenu = new Roma.Host.ContextMenu.RomaTreeContextMenu(
-            entries,
+            ICSharpCode.ILSpy.App.ExportProvider.GetExports<IContextMenuEntry, IContextMenuEntryMetadata>(),
             afterExecute: entry =>
             {
-                if (entry is Roma.Host.Analyzers.RomaAnalyzeContextMenuCommand)
+                if (entry is ICSharpCode.ILSpy.Analyzers.AnalyzeContextMenuCommand)
                     dockWorkspace.ShowToolPane("analyzerPane");
+                if (entry is ICSharpCode.ILSpy.ScopeSearchToAssembly or ICSharpCode.ILSpy.ScopeSearchToNamespace)
+                    dockWorkspace.ShowToolPane("searchPane");
             });
         ICSharpCode.ILSpy.ContextMenuProvider.AttachDataGridContextMenu =
             grid => new Roma.Host.ContextMenu.RomaDataGridContextMenu().Attach(grid);
@@ -719,8 +700,9 @@ public sealed partial class MainPage : Page
     }
 
     private SearchPane? _searchPane;
+    private ICSharpCode.ILSpy.Search.SearchPaneModel _searchPaneModel = null!;
     private RomaToolPaneModel? _browserPaneModel;
-    private RomaAnalyzerViewModel _analyzerViewModel = null!;
+    private ICSharpCode.ILSpy.Analyzers.AnalyzerTreeViewModel _analyzerViewModel = null!;
     private Roma.Host.ContextMenu.RomaTreeContextMenu? _treeContextMenu;
     private ICSharpCode.ILSpy.Controls.TreeView.SharpTreeView? _assemblyTree;
     private ICSharpCode.ILSpy.AssemblyTree.AssemblyTreeModel? _assemblyTreeModel;
@@ -782,7 +764,8 @@ public sealed partial class MainPage : Page
         _searchPane = new SearchPane(
             _assemblyContext.AssemblyList,
             _assemblyContext.LanguageService,
-            _assemblyContext.SettingsService);
+            _assemblyContext.SettingsService,
+            _searchPaneModel);
 
         _browserPaneModel = new RomaToolPaneModel("assemblyListPane", "Assembly Browser",
             CreateAssemblyBrowserContent(), initiallyVisible: true, closeable: false);

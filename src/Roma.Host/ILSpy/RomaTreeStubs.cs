@@ -76,6 +76,8 @@ namespace ICSharpCode.ILSpy
             private ICSharpCode.ILSpy.LanguageService? _languageService;
             private ICSharpCode.ILSpy.Docking.DockWorkspace? _dockWorkspace;
             private ICSharpCode.ILSpy.AssemblyTree.AssemblyTreeModel? _assemblyTreeModel;
+            private ICSharpCode.ILSpy.Analyzers.AnalyzerTreeViewModel? _analyzerTreeViewModel;
+            private ICSharpCode.ILSpy.Search.SearchPaneModel? _searchPaneModel;
             private ICSharpCode.ILSpy.MainWindow? _mainWindow;
             private ICSharpCode.ILSpy.ViewModels.ToolPaneModel[] _toolPanes = [];
 
@@ -103,6 +105,12 @@ namespace ICSharpCode.ILSpy
             private ICSharpCode.ILSpy.AssemblyTree.AssemblyTreeModel AssemblyTreeModel
                 => _assemblyTreeModel ??= new ICSharpCode.ILSpy.AssemblyTree.AssemblyTreeModel(_settingsService, _languageService!, this);
 
+            private ICSharpCode.ILSpy.Analyzers.AnalyzerTreeViewModel AnalyzerTreeViewModel
+                => _analyzerTreeViewModel ??= new ICSharpCode.ILSpy.Analyzers.AnalyzerTreeViewModel(AssemblyTreeModel);
+
+            private ICSharpCode.ILSpy.Search.SearchPaneModel SearchPaneModel
+                => _searchPaneModel ??= new ICSharpCode.ILSpy.Search.SearchPaneModel(_settingsService);
+
             public event System.EventHandler<System.EventArgs>? ExportsChanged { add { } remove { } }
 
             public T GetExportedValue<T>(string? contractName = null) where T : class
@@ -116,6 +124,8 @@ namespace ICSharpCode.ILSpy
                 if (typeof(T) == typeof(ICSharpCode.ILSpyX.AssemblyList)) return Roma.Host.Analyzers.RomaAnalyzerContext.AssemblyList as T;
                 if (typeof(T) == typeof(ICSharpCode.ILSpy.Docking.DockWorkspace)) return DockWorkspace as T;
                 if (typeof(T) == typeof(ICSharpCode.ILSpy.AssemblyTree.AssemblyTreeModel)) return AssemblyTreeModel as T;
+                if (typeof(T) == typeof(ICSharpCode.ILSpy.Analyzers.AnalyzerTreeViewModel)) return AnalyzerTreeViewModel as T;
+                if (typeof(T) == typeof(ICSharpCode.ILSpy.Search.SearchPaneModel)) return SearchPaneModel as T;
                 if (typeof(T) == typeof(ICSharpCode.ILSpy.ViewModels.TabPageModel)) return new ICSharpCode.ILSpy.ViewModels.TabPageModel(this) as T;
                 if (typeof(T) == typeof(ICSharpCode.ILSpy.MainWindow)) return (_mainWindow ??= new ICSharpCode.ILSpy.MainWindow()) as T;
                 return default;
@@ -156,7 +166,72 @@ namespace ICSharpCode.ILSpy
                 if (typeof(T) == typeof(ICSharpCode.ILSpyX.Analyzers.IAnalyzer)
                     && typeof(TMetadataView) == typeof(ICSharpCode.ILSpyX.Analyzers.IAnalyzerMetadata))
                     return (IEnumerable<TomsToolbox.Composition.IExport<T, TMetadataView>>)Roma.Host.Analyzers.RomaAnalyzerContext.Analyzers;
+                if (typeof(T) == typeof(ICSharpCode.ILSpy.Options.IOptionPage)
+                    && typeof(TMetadataView) == typeof(ICSharpCode.ILSpy.Options.IOptionsMetadata)
+                    && contractName == "OptionPages")
+                {
+                    return (IEnumerable<TomsToolbox.Composition.IExport<T, TMetadataView>>)CreateOptionPageExports();
+                }
+                if (typeof(T) == typeof(ICSharpCode.ILSpy.IContextMenuEntry)
+                    && typeof(TMetadataView) == typeof(ICSharpCode.ILSpy.IContextMenuEntryMetadata)
+                    && contractName is null)
+                {
+                    return (IEnumerable<TomsToolbox.Composition.IExport<T, TMetadataView>>)CreateContextMenuEntryExports();
+                }
                 return [];
+            }
+
+            private IEnumerable<TomsToolbox.Composition.IExport<ICSharpCode.ILSpy.IContextMenuEntry, ICSharpCode.ILSpy.IContextMenuEntryMetadata>> CreateContextMenuEntryExports()
+            {
+                yield return CreateContextMenuEntryExport(() => new ICSharpCode.ILSpy.Analyzers.AnalyzeContextMenuCommand(AnalyzerTreeViewModel));
+                yield return CreateContextMenuEntryExport(() => new ICSharpCode.ILSpy.CopyFullyQualifiedNameContextMenuEntry());
+                yield return CreateContextMenuEntryExport(() => new ICSharpCode.ILSpy.TreeNodes.RemoveAssembly());
+                yield return CreateContextMenuEntryExport(() => new ICSharpCode.ILSpy.TreeNodes.ReloadAssembly(AssemblyTreeModel));
+                yield return CreateContextMenuEntryExport(() => new ICSharpCode.ILSpy.TreeNodes.LoadDependencies(AssemblyTreeModel));
+                yield return CreateContextMenuEntryExport(() => new ICSharpCode.ILSpy.TreeNodes.AddToMainList(AssemblyTreeModel));
+                yield return CreateContextMenuEntryExport(() => new ICSharpCode.ILSpy.Commands.DecompileInNewViewCommand(AssemblyTreeModel, DockWorkspace));
+                yield return CreateContextMenuEntryExport(() => new ICSharpCode.ILSpy.ScopeSearchToAssembly(SearchPaneModel));
+                yield return CreateContextMenuEntryExport(() => new ICSharpCode.ILSpy.ScopeSearchToNamespace(SearchPaneModel));
+                yield return CreateContextMenuEntryExport(() => new ICSharpCode.ILSpy.TextView.SaveCodeContextMenuEntry(_languageService!, DockWorkspace));
+                yield return CreateContextMenuEntryExport(() => new ICSharpCode.ILSpy.GeneratePdbContextMenuEntry(_languageService!, DockWorkspace));
+                yield return CreateContextMenuEntryExport(() => new ICSharpCode.ILSpy.TextView.CreateDiagramContextMenuEntry(DockWorkspace));
+                yield return CreateContextMenuEntryExport(() => new ICSharpCode.ILSpy.SelectPdbContextMenuEntry(AssemblyTreeModel));
+                yield return CreateContextMenuEntryExport(() => new ICSharpCode.ILSpy.TreeNodes.OpenContainingFolder());
+                yield return CreateContextMenuEntryExport(() => new ICSharpCode.ILSpy.TreeNodes.OpenCmdHere());
+                yield return CreateContextMenuEntryExport(() => new ICSharpCode.ILSpy.SearchMsdnContextMenuEntry());
+                yield return CreateContextMenuEntryExport(() => new ICSharpCode.ILSpy.Commands.GoToTokenCommand());
+                yield return CreateContextMenuEntryExport(() => new ICSharpCode.ILSpy.Commands.CopyCommand());
+            }
+
+            private static TomsToolbox.Composition.IExport<ICSharpCode.ILSpy.IContextMenuEntry, ICSharpCode.ILSpy.IContextMenuEntryMetadata> CreateContextMenuEntryExport(
+                System.Func<ICSharpCode.ILSpy.IContextMenuEntry> factory)
+            {
+                var entry = factory();
+                var metadata = (ICSharpCode.ILSpy.IContextMenuEntryMetadata?)System.Attribute.GetCustomAttribute(
+                    entry.GetType(),
+                    typeof(ICSharpCode.ILSpy.ExportContextMenuEntryAttribute));
+                return new TomsToolbox.Composition.ExportAdapter<ICSharpCode.ILSpy.IContextMenuEntry, ICSharpCode.ILSpy.IContextMenuEntryMetadata>(
+                    () => entry,
+                    metadata);
+            }
+
+            private static IEnumerable<TomsToolbox.Composition.IExport<ICSharpCode.ILSpy.Options.IOptionPage, ICSharpCode.ILSpy.Options.IOptionsMetadata>> CreateOptionPageExports()
+            {
+                yield return CreateOptionPageExport(() => new Roma.Host.Options.DecompilerSettingsPanel(), 0);
+                yield return CreateOptionPageExport(() => new Roma.Host.Options.DisplaySettingsPanel(), 10);
+                yield return CreateOptionPageExport(() => new Roma.Host.Options.MiscSettingsPanel(), 20);
+            }
+
+            private static TomsToolbox.Composition.IExport<ICSharpCode.ILSpy.Options.IOptionPage, ICSharpCode.ILSpy.Options.IOptionsMetadata> CreateOptionPageExport(
+                System.Func<ICSharpCode.ILSpy.Options.IOptionPage> factory,
+                int order)
+                => new TomsToolbox.Composition.ExportAdapter<ICSharpCode.ILSpy.Options.IOptionPage, ICSharpCode.ILSpy.Options.IOptionsMetadata>(
+                    factory,
+                    new OptionPageMetadata(order));
+
+            private sealed class OptionPageMetadata(int order) : ICSharpCode.ILSpy.Options.IOptionsMetadata
+            {
+                public int Order { get; } = order;
             }
         }
     }

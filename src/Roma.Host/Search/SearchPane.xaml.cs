@@ -2,12 +2,14 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using ICSharpCode.ILSpy;
-using SettingsService = ICSharpCode.ILSpy.Util.SettingsService;
+using ICSharpCode.ILSpy.Search;
+using SettingsService = ICSharpCode.ILSpy.SettingsService;
 using ICSharpCode.ILSpy.AppEnv;
 using ICSharpCode.ILSpyX;
 using ICSharpCode.ILSpyX.Abstractions;
@@ -33,18 +35,22 @@ public sealed partial class SearchPane : UserControl
     readonly LanguageService _languageService;
     readonly SettingsService _settingsService;
     readonly ITreeNodeFactory _treeNodeFactory;
+    readonly SearchPaneModel _model;
 
     public ObservableCollection<SearchResult> Results { get; } = [];
+    public SearchPaneModel Model => _model;
 
     public SearchPane(
         AssemblyList assemblyList,
         LanguageService languageService,
-        SettingsService settingsService)
+        SettingsService settingsService,
+        SearchPaneModel model)
     {
         _assemblyList    = assemblyList;
         _languageService = languageService;
         _settingsService = settingsService;
-        _treeNodeFactory = new RomaTreeNodeFactory();
+        _treeNodeFactory = new ICSharpCode.ILSpy.Search.TreeNodeFactory();
+        _model = model;
 
         InitializeComponent();
 
@@ -54,9 +60,10 @@ public sealed partial class SearchPane : UserControl
 
         _resultList.ItemsSource = Results;
 
-        // Populate mode combo (uses no WPF types — pure data)
-        _modeCombo.ItemsSource  = SearchModes;
-        _modeCombo.SelectedIndex = 0;
+        _modeCombo.ItemsSource = _model.SearchModes;
+        var selectedIndex = Array.FindIndex(_model.SearchModes, item => item.Mode == _model.SessionSettings.SelectedSearchMode);
+        _modeCombo.SelectedIndex = selectedIndex >= 0 ? selectedIndex : 0;
+        _model.PropertyChanged += OnModelPropertyChanged;
 
         // Drain result queue on the UI thread every ~16 ms (replaces CompositionTarget.Rendering)
         var timer = DispatcherQueue.CreateTimer();
@@ -71,38 +78,33 @@ public sealed partial class SearchPane : UserControl
         return underscore >= 0 ? text.Remove(underscore, 1) : text;
     }
 
-    // ── Search mode descriptors (no WPF ImageSource needed) ─────
-
-    static readonly SearchModeDescriptor[] SearchModes =
-    [
-        new(SearchMode.TypeAndMember, "Types and Members", "library.svg"),
-        new(SearchMode.Type,          "Type",              "class.svg"),
-        new(SearchMode.Member,        "Member",            "property.svg"),
-        new(SearchMode.Method,        "Method",            "method.svg"),
-        new(SearchMode.Field,         "Field",             "field.svg"),
-        new(SearchMode.Property,      "Property",          "property.svg"),
-        new(SearchMode.Event,         "Event",             "event.svg"),
-        new(SearchMode.Literal,       "Constant",          "literal.svg"),
-        new(SearchMode.Token,         "Metadata Token",    "library.svg"),
-        new(SearchMode.Resource,      "Resource",          "resource.svg"),
-        new(SearchMode.Assembly,      "Assembly",          "assembly.svg"),
-        new(SearchMode.Namespace,     "Namespace",         "namespace.svg"),
-    ];
-
-    internal sealed class SearchModeDescriptor(SearchMode mode, string name, string iconFile)
-    {
-        public SearchMode Mode { get; } = mode;
-        public string Name { get; } = name;
-        public Microsoft.UI.Xaml.Media.Imaging.SvgImageSource Icon { get; } = ILSpyIconHelper.GetSource(iconFile);
-    }
-
     // ── UI event handlers ────────────────────────────────────────
 
     void OnSearchBoxTextChanged(object sender, TextChangedEventArgs e)
-        => StartSearch(_searchBox.Text);
+    {
+        if (_model.SearchTerm != _searchBox.Text)
+            _model.SearchTerm = _searchBox.Text;
+        StartSearch(_searchBox.Text);
+    }
+
+    void OnModelPropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName != nameof(SearchPaneModel.SearchTerm))
+            return;
+
+        DispatcherQueue.TryEnqueue(() =>
+        {
+            if (_searchBox.Text != _model.SearchTerm)
+                _searchBox.Text = _model.SearchTerm ?? string.Empty;
+        });
+    }
 
     void OnModeSelectionChanged(object sender, SelectionChangedEventArgs e)
-        => StartSearch(_searchBox.Text);
+    {
+        if (_modeCombo.SelectedItem is SearchModeModel mode)
+            _model.SessionSettings.SelectedSearchMode = mode.Mode;
+        StartSearch(_searchBox.Text);
+    }
 
     void OnSearchBoxKeyDown(object sender, KeyRoutedEventArgs e)
     {
@@ -190,7 +192,7 @@ public sealed partial class SearchPane : UserControl
             return;
         }
 
-        var mode = _modeCombo.SelectedItem is SearchModeDescriptor d ? d.Mode : SearchMode.TypeAndMember;
+        var mode = _modeCombo.SelectedItem is SearchModeModel d ? d.Mode : SearchMode.TypeAndMember;
         var assemblies = await _assemblyList.GetAllAssemblies();
 
         var search = new RunningSearch(
@@ -209,30 +211,6 @@ public sealed partial class SearchPane : UserControl
 
         if (_currentSearch == search)
             _progressBar.IsIndeterminate = false;
-    }
-
-    // Scope the current search to a single assembly by adding/replacing an `inassembly:` filter
-    // term, then re-run — mirrors ICSharpCode.ILSpy.ScopeSearchToAssembly against Roma's own
-    // SearchPane (Roma does not compile ILSpy's SearchPaneModel).
-    public void ScopeToAssembly(string assemblyName)
-    {
-        var term = _searchBox.Text ?? string.Empty;
-        var args = CommandLineTools.CommandLineToArgumentArray(term);
-        bool replaced = false;
-        for (int i = 0; i < args.Length; i++)
-        {
-            if (args[i].StartsWith("inassembly:", StringComparison.OrdinalIgnoreCase))
-            {
-                args[i] = "inassembly:" + assemblyName;
-                replaced = true;
-                break;
-            }
-        }
-        term = replaced
-            ? CommandLineTools.ArgumentArrayToCommandLine(args)
-            : (string.IsNullOrEmpty(term) ? "inassembly:" + assemblyName : term + " inassembly:" + assemblyName);
-        _searchBox.Text = term;
-        StartSearch(term);
     }
 
     // Focus the search box (called by parent when the pane becomes active)
@@ -363,7 +341,7 @@ public sealed partial class SearchPane : UserControl
 
             request.Keywords           = [.. keywords];
             request.RegEx              = regex;
-            request.SearchResultFactory = new RomaSearchResultFactory(_language);
+            request.SearchResultFactory = new ICSharpCode.ILSpy.Search.SearchResultFactory(_language);
             request.TreeNodeFactory     = _treeNodeFactory;
 
             var decompilerSettings = _settingsService.DecompilerSettings.Clone();

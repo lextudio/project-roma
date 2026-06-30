@@ -2,6 +2,8 @@ using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 
+using ICSharpCode.ILSpy.Analyzers;
+using ICSharpCode.ILSpy.Controls.TreeView;
 using ICSharpCode.ILSpyX.TreeView;
 
 using Microsoft.UI.Xaml.Controls;
@@ -10,7 +12,7 @@ namespace Roma.Host.Analyzers;
 
 public sealed partial class AnalyzerPane : UserControl
 {
-    readonly RomaAnalyzerViewModel _vm;
+    readonly AnalyzerTreeViewModel _vm;
     readonly Dictionary<TreeViewNode, SharpTreeNode> _map = [];
     // Per-model-node CollectionChanged subscription, so async analyzer results (added on a background
     // thread via ThreadingSupport) are mirrored into the WinUI tree — otherwise the node stays on
@@ -18,7 +20,7 @@ public sealed partial class AnalyzerPane : UserControl
     readonly Dictionary<SharpTreeNode, NotifyCollectionChangedEventHandler> _childHandlers = [];
     readonly TreeView _tree;
 
-    public AnalyzerPane(RomaAnalyzerViewModel vm)
+    public AnalyzerPane(AnalyzerTreeViewModel vm)
     {
         _vm = vm;
         InitializeComponent();
@@ -65,7 +67,7 @@ public sealed partial class AnalyzerPane : UserControl
             && args.AddedItems[0] is TreeViewNode tvn
             && _map.TryGetValue(tvn, out var node))
         {
-            node.ActivateItem(StubRoutedEventArgs.Instance);
+            node.ActivateItem(new WpfWindowsRoutedEventArgs(new System.Windows.RoutedEventArgs()));
         }
     }
 

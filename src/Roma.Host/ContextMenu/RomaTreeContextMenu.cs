@@ -24,6 +24,7 @@ using Microsoft.UI.Xaml.Controls;
 using Microsoft.UI.Xaml.Media.Imaging;
 
 using Roma.Host;
+using TomsToolbox.Composition;
 
 using ILSpyResources = ICSharpCode.ILSpy.Properties.Resources;
 using RomaResources = Roma.Host.Properties.Resources;
@@ -56,6 +57,12 @@ internal sealed class RomaTreeContextMenu
     internal RomaTreeContextMenu(IEnumerable<IContextMenuEntry> entries, Action<IContextMenuEntry>? afterExecute = null)
     {
         _entries = entries.Select(Entry.FromInstance).ToList();
+        _afterExecute = afterExecute;
+    }
+
+    internal RomaTreeContextMenu(IEnumerable<IExport<IContextMenuEntry, IContextMenuEntryMetadata>> exports, Action<IContextMenuEntry>? afterExecute = null)
+    {
+        _entries = exports.Select(Entry.FromExport).ToList();
         _afterExecute = afterExecute;
     }
 
@@ -164,6 +171,25 @@ internal sealed class RomaTreeContextMenu
                 // the omission is visible rather than silently dropping the entry.
                 return new Entry { Instance = instance, Header = instance.GetType().Name, Order = double.MaxValue };
             }
+
+            return new Entry
+            {
+                Instance = instance,
+                Header = ResolveHeader(meta.Header),
+                IconUri = ResolveIcon(meta.Icon),
+                Category = meta.Category,
+                Order = meta.Order,
+                MenuID = meta.MenuID,
+                ParentMenuID = meta.ParentMenuID,
+            };
+        }
+
+        public static Entry FromExport(IExport<IContextMenuEntry, IContextMenuEntryMetadata> export)
+        {
+            var instance = export.Value!;
+            var meta = export.Metadata;
+            if (meta is null)
+                return FromInstance(instance);
 
             return new Entry
             {
