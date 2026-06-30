@@ -425,7 +425,7 @@ public sealed partial class MainPage : Page
     private void OnMenuShowAssembliesPane(object sender, RoutedEventArgs e) => Dbg("Menu: Window → Assemblies (not yet implemented)");
     private void OnMenuShowSearchPane(object sender, RoutedEventArgs e) => ShowSearchPane();
     private void OnMenuShowAnalyzerPane(object sender, RoutedEventArgs e) => DockWorkspace.ShowToolPane("analyzerPane");
-    private void OnMenuShowDebugStepsPane(object sender, RoutedEventArgs e) => Dbg("Menu: Window → Debug Steps (not yet implemented)");
+    private void OnMenuShowDebugStepsPane(object sender, RoutedEventArgs e) => DockWorkspace.ShowToolPane("debugStepsPane");
     private void OnMenuCloseAllDocuments(object sender, RoutedEventArgs e) => Dbg("Menu: Window → Close All Documents (not yet implemented)");
     private void OnMenuResetLayout(object sender, RoutedEventArgs e) => Dbg("Menu: Window → Reset Layout (not yet implemented)");
     private void OnMenuShowCodeTab(object sender, RoutedEventArgs e) => Dbg("Menu: Window → Code tab (not yet implemented)");
@@ -773,9 +773,22 @@ public sealed partial class MainPage : Page
             new AnalyzerPane(_analyzerViewModel), initiallyVisible: false, closeable: true);
         var search = new RomaToolPaneModel("searchPane", "Search",
             _searchPane, initiallyVisible: false, closeable: true);
+#if DEBUG
+        var debugSteps = new RomaToolPaneModel("debugStepsPane", ICSharpCode.ILSpy.Properties.Resources.DebugSteps,
+            new Roma.Host.Views.DebugStepsPane(
+                _assemblyTreeModel!,
+                _assemblyContext.SettingsService,
+                _assemblyContext.LanguageService,
+                DockWorkspace),
+            initiallyVisible: false, closeable: true);
+#endif
 
         if (ICSharpCode.ILSpy.App.ExportProvider is ICSharpCode.ILSpy.App.RomaExportProvider provider)
-            provider.SetToolPanes(new ICSharpCode.ILSpy.ViewModels.ToolPaneModel[] { _browserPaneModel, analyzer, search });
+            provider.SetToolPanes(new ICSharpCode.ILSpy.ViewModels.ToolPaneModel[] { _browserPaneModel, analyzer, search
+#if DEBUG
+                , debugSteps
+#endif
+            });
     }
 
     // Restores the persisted layout (mirrors ILSpy's DockWorkspace.InitializeLayout): deserializes the

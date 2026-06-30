@@ -16,7 +16,7 @@ namespace ICSharpCode.ILSpy.TextView
     // dropped (the UnoEdit editor brings its own scrolling).
     partial class DecompilerTextView
     {
-        private DecompilerTextEditor textEditor = null!;
+        internal DecompilerTextEditor textEditor = null!;
         private Border waitAdorner = null!;
         private ProgressBar progressBar = null!;
         private TextBlock progressTitle = null!;

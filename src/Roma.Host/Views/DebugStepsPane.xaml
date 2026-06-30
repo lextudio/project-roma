@@ -1,0 +1,18 @@
+<UserControl
+    x:Class="Roma.Host.Views.DebugStepsPane"
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+  <Grid>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
+    <StackPanel Grid.Row="0" Orientation="Horizontal">
+      <CheckBox x:Name="_fieldSugar" Margin="3" Content="Use field sugar" Checked="OnCheckBoxChanged" Unchecked="OnCheckBoxChanged" />
+      <CheckBox x:Name="_logicOpSugar" Margin="3" Content="Use logic operation sugar" Checked="OnCheckBoxChanged" Unchecked="OnCheckBoxChanged" />
+      <CheckBox x:Name="_showILRanges" Margin="3" Content="Show IL ranges" Checked="OnCheckBoxChanged" Unchecked="OnCheckBoxChanged" />
+      <CheckBox x:Name="_showChildIndex" Margin="3" Content="Show child index in block" Checked="OnCheckBoxChanged" Unchecked="OnCheckBoxChanged" />
+    </StackPanel>
+    <TreeView x:Name="_tree" Grid.Row="1" SelectionMode="Single" />
+  </Grid>
+</UserControl>

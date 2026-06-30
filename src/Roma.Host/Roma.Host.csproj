@@ -120,6 +120,10 @@
     <Compile Include="..\..\ext\ilspy\ILSpy\Languages\Language.cs" Link="ILSpy\Languages\Language.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\DecompilationOptions.cs" Link="ILSpy\DecompilationOptions.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\Languages\IResourceFileHandler.cs" Link="ILSpy\Languages\IResourceFileHandler.cs" />
+    <!-- Batch 2: IL + mixed IL/C# language decompilers -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Languages\ILLanguage.cs" Link="ILSpy\Languages\ILLanguage.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Languages\ILAstLanguage.cs" Link="ILSpy\Languages\ILAstLanguage.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Languages\CSharpILMixedLanguage.cs" Link="ILSpy\Languages\CSharpILMixedLanguage.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\TextView\IBracketSearcher.cs" Link="ILSpy\TextView\IBracketSearcher.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\TextView\BracketSearchResult.cs" Link="ILSpy\TextView\BracketSearchResult.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\TextView\DefaultBracketSearcher.cs" Link="ILSpy\TextView\DefaultBracketSearcher.cs" />
@@ -173,6 +177,12 @@
     <Compile Include="..\..\ext\ilspy\ILSpy\TreeNodes\ResourceNodes\ResourcesFileTreeNode.cs" Link="ILSpy\TreeNodes\ResourceNodes\ResourcesFileTreeNode.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\Controls\TreeView\WpfWindowsDataObject.cs" Link="ILSpy\Controls\TreeView\WpfWindowsDataObject.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\Controls\TreeView\WpfWindowsRoutedEventArgs.cs" Link="ILSpy\Controls\TreeView\WpfWindowsRoutedEventArgs.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Controls\TreeView\ExtensionMethods.cs" Link="ILSpy\Controls\TreeView\ExtensionMethods.cs" />
+    <!-- Controls converters & markup extensions (pure shim‑based deps). -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Controls\CultureSelectionConverter.cs" Link="ILSpy\Controls\CultureSelectionConverter.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Controls\ExtensionMethods.cs" Link="ILSpy\Controls\ExtensionMethods.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Controls\XamlResourceExtension.cs" Link="ILSpy\Controls\XamlResourceExtension.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\ILSpySettingsFilePathProvider.cs" Link="ILSpy\ILSpySettingsFilePathProvider.cs" />
     <!-- ExtensionMethods: SelectArray, GetTypeSystemWithCurrentOptionsOrNull, DPI transforms, visual-tree helpers.
          3 'return null' → 'return default' tweaks guarded by ROMA_UNO (nullable+alias on T : DependencyObject). -->
     <Compile Include="..\..\ext\ilspy\ILSpy\ExtensionMethods.cs" Link="ILSpy\ExtensionMethods.cs" />
@@ -190,6 +200,9 @@
     <!-- VisualLineReferenceText: reference-link visual element. .wpf.cs (OnQueryCursor) is
          WPF-only cursor handling — main .cs only. -->
     <Compile Include="..\..\ext\ilspy\ILSpy\TextView\VisualLineReferenceText.cs" Link="ILSpy\TextView\VisualLineReferenceText.cs" />
+    <!-- Batch 3: editor context-menu entries (Copy/SelectAll/ToggleFolding) — pure AvalonEdit API. -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\TextView\EditorCommands.cs" Link="ILSpy\TextView\EditorCommands.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\TextView\FoldingCommands.cs" Link="ILSpy\TextView\FoldingCommands.cs" />
     <!-- The real DecompilerTextView + its documentation/tooltip builder. InitializeComponent +
          the named elements (textEditor/waitAdorner/progressBar/...) are code-built in
          RomaDecompilerTextViewInit.cs; WPF-only clipboard/adorner/animation bits are guarded. -->
@@ -240,6 +253,10 @@
          Non-CROSS_PLATFORM path → : PaneModel. Defines IHaveState (stub removed). -->
     <Compile Include="..\..\ext\ilspy\ILSpy\ViewModels\TabPageModel.cs" Link="ILSpy\ViewModels\TabPageModel.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\ViewModels\Pane.cs" Link="ILSpy\ViewModels\Pane.cs" />
+    <!-- Batch 2: additional portable ViewModels -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\ViewModels\DebugStepsPaneModel.cs" Link="ILSpy\ViewModels\DebugStepsPaneModel.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\ViewModels\UpdatePanelViewModel.cs" Link="ILSpy\ViewModels\UpdatePanelViewModel.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\ViewModels\TabPageModelExtensions.wpf.cs" Link="ILSpy\ViewModels\TabPageModelExtensions.wpf.cs" />
     <!-- Session 26: full port of the assembly-tree model + docking + navigation.
          DecompilerTextView stays a Roma bridge (out of scope); DockWorkspace.wpf.cs
          (AvalonDock DockingManager binding glue) is replaced by a Roma partial. -->
@@ -306,11 +323,43 @@
     <Compile Include="..\..\ext\ilspy\ILSpy\Commands\DecompileInNewViewCommand.cs" Link="ILSpy\Commands\DecompileInNewViewCommand.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\SolutionWriter.cs" Link="ILSpy\SolutionWriter.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\Commands\SaveCodeContextMenuEntry.cs" Link="ILSpy\Commands\SaveCodeContextMenuEntry.cs" />
+    <!-- Batch 4: CompareViewModel (diff viewer view-model). The Show method's CompareView
+         XAML creation is #if !ROMA_UNO'd; the rest is pure tree-diff logic. -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\ViewModels\CompareViewModel.cs" Link="ILSpy\ViewModels\CompareViewModel.cs" />
+    <!-- ShowPane: two small SimpleCommand subclasses that just dock-pane / tab activation. -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\ShowPane.cs" Link="ILSpy\Commands\ShowPane.cs" />
+    <!-- CompareContextMenuEntry: context-menu compare action (CompareViewModel already linked). -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\CompareContextMenuEntry.cs" Link="ILSpy\Commands\CompareContextMenuEntry.cs" />
+    <!-- ExitCommand: delegates to MainWindow.Close() which is a no‑op shim on Uno. -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\ExitCommand.cs" Link="ILSpy\Commands\ExitCommand.cs" />
+    <!-- Batch 6: CommandWrapper-based file/open/save/refresh commands -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\OpenCommand.cs" Link="ILSpy\Commands\OpenCommand.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\SaveCommand.cs" Link="ILSpy\Commands\SaveCommand.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\RefreshCommand.cs" Link="ILSpy\Commands\RefreshCommand.cs" />
+    <!-- DEBUG-only diagnostic commands -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\DisassembleAllCommand.cs" Link="ILSpy\Commands\DisassembleAllCommand.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\DecompileAllCommand.cs" Link="ILSpy\Commands\DecompileAllCommand.cs" />
+    <!-- ViewModels -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\ViewModels\LegacyToolPaneModel.cs" Link="ILSpy\ViewModels\LegacyToolPaneModel.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\Commands\GeneratePdbContextMenuEntry.cs" Link="ILSpy\Commands\GeneratePdbContextMenuEntry.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\Commands\CreateDiagramContextMenuEntry.cs" Link="ILSpy\Commands\CreateDiagramContextMenuEntry.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\Commands\SelectPdbContextMenuEntry.cs" Link="ILSpy\Commands\SelectPdbContextMenuEntry.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\Commands\ScopeSearchToAssembly.cs" Link="ILSpy\Commands\ScopeSearchToAssembly.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\Commands\ScopeSearchToNamespace.cs" Link="ILSpy\Commands\ScopeSearchToNamespace.cs" />
+    <!-- Batch 1: pure-orchestration commands (SimpleCommand/IContextMenuEntry subclasses,
+         zero WPF deps beyond what WindowsShims already covers). -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\DelegateCommand.cs" Link="ILSpy\Commands\DelegateCommand.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\SortAssemblyListCommand.cs" Link="ILSpy\Commands\SortAssemblyListCommand.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\SetThemeCommand.cs" Link="ILSpy\Commands\SetThemeCommand.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\CheckForUpdatesCommand.cs" Link="ILSpy\Commands\CheckForUpdatesCommand.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\RemoveAssembliesWithLoadErrors.cs" Link="ILSpy\Commands\RemoveAssembliesWithLoadErrors.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\DecompileCommand.cs" Link="ILSpy\Commands\DecompileCommand.cs" />
+    <!-- Batch 5: CommandWrapper (routed-command bridge — CommandBindings.Add is #if !ROMA_UNO'd)
+         + toolbar navigation commands (BrowseBack, BrowseForward, ShowSearch). -->
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\CommandWrapper.cs" Link="ILSpy\Commands\CommandWrapper.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\BrowseBackCommand.cs" Link="ILSpy\Commands\BrowseBackCommand.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Commands\BrowseForwardCommand.cs" Link="ILSpy\Commands\BrowseForwardCommand.cs" />
+    <Compile Include="..\..\ext\ilspy\ILSpy\Search\ShowSearchCommand.cs" Link="ILSpy\Search\ShowSearchCommand.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\Util\ResourceHelper.cs" Link="ILSpy\Util\ResourceHelper.cs" />
     <!-- Analyzers: tree nodes -->
     <Compile Include="..\..\ext\ilspy\ILSpy\Analyzers\AnalyzerTreeNode.cs" Link="ILSpy\Analyzers\AnalyzerTreeNode.cs" />

@@ -2,7 +2,6 @@ using System.ComponentModel;
 using System.Xml.Linq;
 
 using ICSharpCode.ILSpyX;
-using ICSharpCode.ILSpyX.Settings;
 
 namespace System.Windows
 {
@@ -103,41 +102,4 @@ namespace ICSharpCode.ILSpy
         public override string FileExtension => ".il";
     }
 
-    public class ILLanguage : Language
-    {
-        public override string Name => "IL";
-
-        public override string FileExtension => ".il";
-    }
-
-    public static class ILAstLanguage
-    {
-        public static IEnumerable<Language> GetDebugLanguages(Docking.DockWorkspace dockWorkspace)
-            => Array.Empty<Language>();
-    }
-
-    internal sealed class ILSpySettingsFilePathProvider : ISettingsFilePathProvider
-    {
-        public string GetSettingsFilePath()
-        {
-            var overridePath = Environment.GetEnvironmentVariable("ROMA_SETTINGS_FILE");
-            if (!string.IsNullOrWhiteSpace(overridePath))
-            {
-                var overrideDirectory = Path.GetDirectoryName(overridePath);
-                if (!string.IsNullOrEmpty(overrideDirectory))
-                {
-                    Directory.CreateDirectory(overrideDirectory);
-                }
-
-                return overridePath;
-            }
-
-            var directory = Path.Combine(
-                Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData),
-                "LeXtudio",
-                "Roma");
-            Directory.CreateDirectory(directory);
-            return Path.Combine(directory, "Roma.ILSpy.xml");
-        }
-    }
 }

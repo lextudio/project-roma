@@ -14,5 +14,8 @@ namespace ICSharpCode.ILSpy
         // No WPF taskbar item on Uno; stays null so DecompilerTextView's taskbar-progress
         // blocks are skipped at runtime (they only need this to compile).
         public System.Windows.Shell.TaskbarItemInfo? TaskbarItemInfo { get; }
+
+        // Stub for ExitCommand — no WPF Window to close on Uno.
+        public void Close() { }
     }
 }
