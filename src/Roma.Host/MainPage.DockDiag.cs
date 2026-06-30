@@ -1,3 +1,4 @@
+#if DEBUG
 // TEMPORARY DevFlow diagnostics for verifying dock-layout persistence. Remove after verification.
 using System.Linq;
 using AvalonDock.Layout;
@@ -76,3 +77,4 @@ public sealed partial class MainPage
         return result;
     }
 }
+#endif

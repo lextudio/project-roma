@@ -37,8 +37,8 @@
       SkiaRenderer;
       Svg;
     </UnoFeatures>
-    <UseNuGetPackages>true</UseNuGetPackages>
     <NoWarn>$(NoWarn);CA1416;CA1016;CS0169;CS8600;CS8604;CS8618;CS8603;CS8601;CS8602;CS8605;CS8612;CS8621;CS8766;CS8620;CS8767;CS8622;CS8625</NoWarn>
+    <UseNuGetPackages>false</UseNuGetPackages>
   </PropertyGroup>
 
   <ItemGroup>
@@ -72,7 +72,7 @@
          ExportContextMenuEntryAttribute in ContextMenuEntry.cs. Version aligned with ILSpyX. -->
     <PackageReference Include="System.Composition.AttributedModel" />
     <PackageReference Include="Tmds.DBus.Protocol" />
-    <PackageReference Include="LeXtudio.DevFlow.Agent.Uno" />
+    <PackageReference Include="LeXtudio.DevFlow.Agent.Uno" Condition="'$(Configuration)'=='Debug'" />
   </ItemGroup>
 
   <ItemGroup>

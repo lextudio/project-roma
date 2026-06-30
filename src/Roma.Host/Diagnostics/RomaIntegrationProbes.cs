@@ -234,6 +234,16 @@ public sealed partial class MainPage
         return $"{{\"lists\":[{arr}],\"created\":{Json(name)}}}";
     });
 
+    // Deletes an assembly list by name (no-op if it doesn't exist); returns updated lists JSON.
+    [DevFlowAction("roma.probe.delete-list", Description = "PROBE: delete an assembly list by name; returns lists JSON.")]
+    public static string ProbeDeleteList(string name) => RunOnUi(page =>
+    {
+        var manager = page._assemblyContext.AssemblyListManager;
+        manager.DeleteList(name);
+        var arr = string.Join(",", manager.AssemblyLists.Select(Json));
+        return $"{{\"lists\":[{arr}]}}";
+    });
+
     // Switches the active assembly list (same path as the toolbar combo / dialog Open).
     [DevFlowAction("roma.probe.switch-list", Description = "PROBE: switch the active assembly list by name; returns state JSON.")]
     public static string ProbeSwitchList(string name) => RunOnUi(page =>

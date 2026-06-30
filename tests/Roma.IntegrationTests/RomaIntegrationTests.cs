@@ -147,6 +147,10 @@ public sealed class RomaIntegrationTests
         var other = await _app.InvokeAsync("roma.probe.switch-list", "Switch Target");
         Assert.Equal("Switch Target", other.GetProperty("activeList").GetString());
         Assert.Equal(0, Rows(other));
+
+        // Restore: switch back and delete the temporary list so it doesn't persist to disk.
+        await _app.InvokeAsync("roma.probe.switch-list", "Uno Platform");
+        await _app.InvokeAsync("roma.probe.delete-list", "Switch Target");
     }
 
     [Fact]

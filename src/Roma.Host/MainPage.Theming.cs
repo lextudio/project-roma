@@ -36,62 +36,6 @@ public sealed partial class MainPage
         PopulateUiLanguageMenu();
     }
 
-    [LeXtudio.DevFlow.Agent.Core.DevFlowAction("roma.apply-theme", Description = "Applies a theme by name (diagnostic).")]
-    public static string ApplyThemeByName(string name)
-    {
-        var page = _current;
-        if (page is null) return "MainPage not available.";
-        string result = string.Empty;
-        using var done = new System.Threading.ManualResetEventSlim();
-        page.DispatcherQueue.TryEnqueue(() =>
-        {
-            try
-            {
-                var def = RomaThemes.FirstOrDefault(t => string.Equals(t.Name, name, StringComparison.OrdinalIgnoreCase));
-                if (def.Name is null) { result = $"unknown theme '{name}'"; return; }
-                page.ApplyTheme(def.Name, def.IsDark);
-                result = $"applied '{def.Name}' isDark={def.IsDark}";
-            }
-            catch (Exception ex) { result = ex.ToString(); }
-            finally { done.Set(); }
-        });
-        done.Wait(5000);
-        return result;
-    }
-
-    [LeXtudio.DevFlow.Agent.Core.DevFlowAction("roma.theme-state", Description = "Reports Roma theme state for the root, menu, toolbar, dock, and editor.")]
-    public static string GetThemeState()
-    {
-        var page = _current;
-        if (page is null) return "MainPage not available.";
-        string result = string.Empty;
-        using var done = new System.Threading.ManualResetEventSlim();
-        page.DispatcherQueue.TryEnqueue(() =>
-        {
-            try
-            {
-                var root = page.XamlRoot?.Content as FrameworkElement;
-                result =
-                    $"sessionTheme={page._assemblyContext.SettingsService.SessionSettings.Theme ?? string.Empty}\n" +
-                    $"themeManagerIsDark={ICSharpCode.ILSpy.Themes.ThemeManager.Current.IsDarkTheme}\n" +
-                    $"imagesIsDark={ICSharpCode.ILSpy.Images.IsDark}\n" +
-                    $"rootRequestedTheme={root?.RequestedTheme.ToString() ?? string.Empty}\n" +
-                    $"pageRequestedTheme={page.RequestedTheme}\n" +
-                    $"menuRequestedTheme={page._menuBar.RequestedTheme}\n" +
-                    $"menuActualTheme={page._menuBar.ActualTheme}\n" +
-                    $"toolbarRequestedTheme={page._toolBar.RequestedTheme}\n" +
-                    $"toolbarActualTheme={page._toolBar.ActualTheme}\n" +
-                    $"dockActualTheme={page.DockManager.ActualTheme}\n" +
-                    $"menuBackground={BrushToString(page._menuBar.Background)}\n" +
-                    $"toolbarBackground={BrushToString(page._toolBar.Background)}";
-            }
-            catch (Exception ex) { result = ex.ToString(); }
-            finally { done.Set(); }
-        });
-        done.Wait(5000);
-        return result;
-    }
-
     // ── Theme ───────────────────────────────────────────────────────────────
     private void PopulateThemeMenu()
     {
