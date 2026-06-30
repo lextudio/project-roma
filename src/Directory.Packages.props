@@ -6,11 +6,11 @@
     See https://aka.platform.uno/using-uno-sdk#implicit-packages for more information regarding the Implicit Packages.
   -->
   <ItemGroup>
-    <PackageVersion Include="LeXtudio.UnoEdit" Version="0.7.6" />
-    <PackageVersion Include="LeXtudio.Windows" Version="0.8.8" />
-    <PackageVersion Include="LeXtudio.RichText" Version="0.7.5" />
-    <PackageVersion Include="LeXtudio.UnoDock" Version="0.1.10" />
-    <PackageVersion Include="LeXtudio.UnoDock.Themes.VS2013" Version="0.1.9" />
+    <PackageVersion Include="LeXtudio.UnoEdit" Version="0.7.7" />
+    <PackageVersion Include="LeXtudio.Windows" Version="0.8.9" />
+    <PackageVersion Include="LeXtudio.RichText" Version="0.7.6" />
+    <PackageVersion Include="LeXtudio.UnoDock" Version="0.1.11" />
+    <PackageVersion Include="LeXtudio.UnoDock.Themes.VS2013" Version="0.1.11" />
     <PackageVersion Include="LeXtudio.DevFlow.Agent.Uno" Version="0.1.14" />
     <PackageVersion Include="CommunityToolkit.WinUI.Controls.Primitives" Version="8.2.251219" />
     <PackageVersion Include="GitVersion.MsBuild" Version="6.5.1" />
