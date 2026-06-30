@@ -1,5 +1,4 @@
 using System;
-using System.Linq;
 
 using ICSharpCode.ILSpyX.TreeView;
 
@@ -29,15 +28,11 @@ namespace ICSharpCode.ILSpy.AssemblyTree
         {
             try
             {
-                // Root-first ancestor chain (the invisible AssemblyListTreeNode root has no TreeViewNode).
-                foreach (var ancestor in node.AncestorsAndSelf().Reverse())
-                {
-                    if (ReferenceEquals(ancestor, node))
-                        continue;
-                    if (_tree.TreeViewNodeFor(ancestor) is { } tvn)
-                        tvn.IsExpanded = true;
-                }
-                if (_tree.TreeViewNodeFor(node) is { } target)
+                // Materialize + expand the ancestor chain top-down so the (possibly never-expanded)
+                // target node has a TreeViewNode, then select it. EnsureVisible realizes lazy child
+                // TreeViewNodes itself — vital for session restore, where the model path exists but the
+                // WinUI tree hasn't expanded any of these nodes yet.
+                if (_tree.EnsureVisible(node) is { } target)
                 {
                     _tree.SelectedNode = target;
                     _tree.SetSelection([node]);

@@ -30,6 +30,39 @@ namespace ICSharpCode.ILSpy.Controls.TreeView
         internal TreeViewNode? TreeViewNodeFor(SharpTreeNode node)
             => _forward.TryGetValue(node, out var tvn) ? tvn : null;
 
+        // Set by SharpTreeViewAdapter: creates + registers the child TreeViewNodes of an expanded
+        // parent (the same work the Expanding event does). EnsureVisible uses it to materialize a
+        // path top-down without relying on WinUI raising Expanding for programmatic expansions.
+        internal Action<TreeViewNode>? RealizeChildren { get; set; }
+
+        // Expands and materializes the ancestor chain of <paramref name="node"/> so its TreeViewNode
+        // exists, then returns it (or null if the node isn't reachable from the roots). The WinUI
+        // TreeView realizes children lazily on expand, so for a node never expanded in the UI (session
+        // restore, reference jumps) the child TreeViewNodes don't exist yet — we realize each ancestor
+        // ourselves, top-down, instead of waiting for the Expanding event that programmatic expansion
+        // may not raise synchronously.
+        internal TreeViewNode? EnsureVisible(SharpTreeNode node)
+        {
+            // Walk top-down, skipping the invisible AssemblyListTreeNode root (Parent == null): it has
+            // no TreeViewNode — only its children are the top-level RootNodes. Those top-level (assembly)
+            // nodes are pre-registered by the adapter; every deeper node is registered when we realize
+            // its parent's children below.
+            foreach (var ancestor in node.AncestorsAndSelf().Where(a => a.Parent != null).Reverse())
+            {
+                if (ReferenceEquals(ancestor, node))
+                    break;
+
+                if (TreeViewNodeFor(ancestor) is not { } tvn)
+                    return null; // chain broken — an ancestor was never realized (shouldn't happen)
+
+                if (tvn.HasUnrealizedChildren)
+                    RealizeChildren?.Invoke(tvn);
+                tvn.IsExpanded = true;
+            }
+
+            return TreeViewNodeFor(node);
+        }
+
         internal void Unregister(SharpTreeNode node)
         {
             if (_forward.TryGetValue(node, out var tvn))

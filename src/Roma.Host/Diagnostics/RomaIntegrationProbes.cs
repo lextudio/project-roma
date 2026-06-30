@@ -139,6 +139,51 @@ public sealed partial class MainPage
         return Snapshot(page);
     });
 
+    // Reproduces session-restore tree reveal: finds a node deep in the tree by its display text
+    // (FindNode materializes only the MODEL hierarchy, leaving the WinUI TreeViewNodes unexpanded —
+    // exactly the restore precondition), then runs the real reveal path AssemblyTreeModel.SelectNode →
+    // activeView.ScrollIntoView → SharpTreeView.EnsureVisible. Reports whether the target got a
+    // TreeViewNode, became the tree's selection, and whether every ancestor ended up expanded.
+    [DevFlowAction("roma.probe.reveal-node", Description = "PROBE: reveal a deep tree node by text (session-restore path); returns reveal JSON.")]
+    public static string ProbeRevealNode(string assemblyPath, string nodeText) => RunOnUi(page =>
+    {
+        if (!page._assemblyContext.AssemblyList.GetAssemblies()
+                .Select(a => a.GetMetadataFileOrNull())
+                .Any(f => f is not null && string.Equals(f.FileName, assemblyPath, StringComparison.OrdinalIgnoreCase)))
+        {
+            page._assemblyContext.AssemblyList.OpenAssembly(assemblyPath);
+        }
+
+        var target = page.FindNode(page._assemblyContext.Root,
+            n => string.Equals(n.Text?.ToString(), nodeText, StringComparison.Ordinal));
+        if (target is null)
+            return $"{{\"error\":{Json($"node not found: {nodeText}")}}}";
+
+        var tree = page._assemblyTree;
+        if (tree is null)
+            return "{\"error\":\"tree not available\"}";
+
+        var ancestors = target.Ancestors().Where(a => a.Parent is not null).ToList();
+        var expandedBefore = ancestors.Count(a => tree.TreeViewNodeFor(a)?.IsExpanded == true);
+
+        // The real restore call.
+        page._assemblyTreeModel.SelectNode(target);
+
+        var tvnExists = tree.TreeViewNodeFor(target) is not null;
+        var expandedAfter = ancestors.Count(a => tree.TreeViewNodeFor(a)?.IsExpanded == true);
+        var selectedText = tree.SelectedItem?.Text?.ToString();
+        var isSelected = ReferenceEquals(tree.SelectedItem, target);
+
+        return $"{{\"node\":{Json(nodeText)}," +
+               $"\"ancestorCount\":{ancestors.Count}," +
+               $"\"expandedBefore\":{expandedBefore}," +
+               $"\"expandedAfter\":{expandedAfter}," +
+               $"\"treeViewNodeRealized\":{(tvnExists ? "true" : "false")}," +
+               $"\"selectedText\":{Json(selectedText)}," +
+               $"\"isSelected\":{(isSelected ? "true" : "false")}," +
+               $"\"revealed\":{(tvnExists && isSelected && expandedAfter == ancestors.Count ? "true" : "false")}}}";
+    });
+
     // Shows the About page in the document area and returns state (documentTitle should be "About").
     [DevFlowAction("roma.probe.show-about", Description = "PROBE: show the About page; returns state JSON.")]
     public static string ProbeShowAbout() => RunOnUi(page =>

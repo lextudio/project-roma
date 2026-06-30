@@ -54,23 +54,30 @@ internal static class SharpTreeViewAdapter
             return tvn;
         }
 
-        tree.Expanding += (_, args) =>
+        // Materialize the child TreeViewNodes of an expanded parent. Shared by the Expanding event
+        // (user-driven expansion) and SharpTreeView.EnsureVisible (programmatic path reveal — e.g.
+        // session restore / reference jumps), so a node deep in the tree can be made visible without
+        // waiting for WinUI to raise Expanding for each ancestor.
+        void RealizeChildren(TreeViewNode tvn)
         {
-            var node = tree.NodeFor(args.Node);
+            var node = tree.NodeFor(tvn);
             if (node is null)
                 return;
 
-            args.Node.Content = BuildViewModel(node, isExpanded: true);
+            tvn.Content = BuildViewModel(node, isExpanded: true);
 
-            if (args.Node.HasUnrealizedChildren)
+            if (tvn.HasUnrealizedChildren)
             {
                 node.EnsureLazyChildren();
                 foreach (SharpTreeNode child in node.Children)
-                    args.Node.Children.Add(CreateNode(child));
+                    tvn.Children.Add(CreateNode(child));
 
-                args.Node.HasUnrealizedChildren = false;
+                tvn.HasUnrealizedChildren = false;
             }
-        };
+        }
+
+        tree.RealizeChildren = RealizeChildren;
+        tree.Expanding += (_, args) => RealizeChildren(args.Node);
 
         tree.Collapsed += (_, args) =>
         {
