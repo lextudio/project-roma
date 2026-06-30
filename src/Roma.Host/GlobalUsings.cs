@@ -25,7 +25,7 @@ global using Size = Windows.Foundation.Size;
 // files to the WinUI implementations (matching WindowsShims' own aliasing).
 global using DependencyObject = Microsoft.UI.Xaml.DependencyObject;
 global using VisualTreeHelper = Microsoft.UI.Xaml.Media.VisualTreeHelper;
-// RoutedEventHandler: WPF shim (SmartTextOutputExtensions.AddButton click handler).
+// RoutedEventHandler: inline WinUI buttons use the WinUI click delegate.
 global using RoutedEventHandler = Microsoft.UI.Xaml.RoutedEventHandler;
 // Application: linked ILSpy code (AssemblyTreeModel) uses System.Windows.Application
 // (Current.Dispatcher / Current.MainWindow). Bare `Application` therefore resolves to the
@@ -54,6 +54,7 @@ global using RoutedEventArgs = System.Windows.RoutedEventArgs;
 global using ControlTemplate = System.Windows.Controls.ControlTemplate;
 global using Binding = System.Windows.Data.Binding;
 global using PropertyPath = System.Windows.Data.PropertyPath;
+global using Button = Microsoft.UI.Xaml.Controls.Button;
 global using DataGrid = System.Windows.Controls.DataGrid;
 global using ListBox = System.Windows.Controls.ListBox;
 global using ContextMenu = System.Windows.Controls.ContextMenu;
