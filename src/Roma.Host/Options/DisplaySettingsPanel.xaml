@@ -23,8 +23,9 @@
         <StackPanel Spacing="8">
           <StackPanel Orientation="Horizontal" Spacing="8">
             <TextBlock Text="Font:" VerticalAlignment="Center" Width="40" />
-            <ComboBox ItemsSource="{Binding FontFamilies}"
+            <ComboBox x:Name="_fontCombo"
                       SelectedItem="{Binding Settings.SelectedFontName, Mode=TwoWay}"
+                      SelectionChanged="OnFontChanged"
                       MinWidth="180" VerticalContentAlignment="Center" />
             <TextBlock Text="Size:" VerticalAlignment="Center" Margin="8,0,0,0" />
             <ComboBox x:Name="_fontSizeCombo"

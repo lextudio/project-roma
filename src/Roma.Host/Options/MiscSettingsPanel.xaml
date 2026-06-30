@@ -16,6 +16,27 @@
                   Content="Hide in-app main menu on macOS"
                   Checked="OnHideMacOSAppMenuChanged"
                   Unchecked="OnHideMacOSAppMenuChanged" />
+        <CheckBox x:Name="_recentFontsEnabled"
+                  Content="Remember recently used fonts"
+                  Checked="OnRecentFontsChanged"
+                  Unchecked="OnRecentFontsChanged" />
+      </StackPanel>
+    </Border>
+
+    <TextBlock Text="Terminal" Style="{ThemeResource BodyStrongTextBlockStyle}" Margin="0,8,0,4"/>
+    <Border BorderBrush="{ThemeResource DividerStrokeColorDefaultBrush}"
+            BorderThickness="1" CornerRadius="4" Padding="12,8">
+      <StackPanel Spacing="6">
+        <TextBlock Text="Preferred terminal for &quot;Open command line here&quot;:"
+                   TextWrapping="Wrap"
+                   Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
+        <ComboBox x:Name="_terminalCombo"
+                  MinWidth="220" HorizontalAlignment="Left"
+                  SelectionChanged="OnTerminalChanged" />
+        <TextBox x:Name="_customTerminalPath"
+                 PlaceholderText="Path to custom terminal executable"
+                 Visibility="Collapsed"
+                 TextChanged="OnCustomTerminalPathChanged" />
       </StackPanel>
     </Border>
 

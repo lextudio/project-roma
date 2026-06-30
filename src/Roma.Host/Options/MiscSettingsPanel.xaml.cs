@@ -28,7 +28,49 @@ public sealed partial class MiscSettingsPanel : UserControl, IOptionPage
             ? Visibility.Visible
             : Visibility.Collapsed;
         _hideMacOSAppMenu.IsChecked = _hostSettings.HideMacOSAppMenu;
+        _recentFontsEnabled.IsChecked = _hostSettings.RecentFontsEnabled;
+
+        var options = TerminalOptionsForCurrentOS();
+        _terminalCombo.ItemsSource = options;
+        var pref = string.IsNullOrEmpty(_hostSettings.PreferredTerminalApp) ? DefaultOption : _hostSettings.PreferredTerminalApp;
+        _terminalCombo.SelectedItem = System.Array.IndexOf(options, pref) >= 0 ? pref : DefaultOption;
+        _customTerminalPath.Text = _hostSettings.CustomTerminalPath ?? string.Empty;
+        _customTerminalPath.Visibility = (_terminalCombo.SelectedItem as string) == "Custom" ? Visibility.Visible : Visibility.Collapsed;
         _loading = false;
+    }
+
+    const string DefaultOption = "(Default)";
+
+    static string[] TerminalOptionsForCurrentOS()
+    {
+        if (OperatingSystem.IsMacOS())
+            return [DefaultOption, "System Default", "Terminal.app", "iTerm2", "Custom"];
+        if (OperatingSystem.IsWindows())
+            return [DefaultOption, "Command Prompt", "PowerShell", "PowerShell Core", "Windows Terminal", "Custom"];
+        return [DefaultOption, "System Default", "GNOME Terminal", "Konsole", "Xfce Terminal", "XTerm", "Custom"];
+    }
+
+    private void OnTerminalChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_loading || _hostSettings is null)
+            return;
+        var selected = _terminalCombo.SelectedItem as string;
+        _hostSettings.PreferredTerminalApp = selected == DefaultOption ? string.Empty : selected ?? string.Empty;
+        _customTerminalPath.Visibility = selected == "Custom" ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void OnCustomTerminalPathChanged(object sender, TextChangedEventArgs e)
+    {
+        if (_loading || _hostSettings is null)
+            return;
+        _hostSettings.CustomTerminalPath = _customTerminalPath.Text ?? string.Empty;
+    }
+
+    private void OnRecentFontsChanged(object sender, RoutedEventArgs e)
+    {
+        if (_loading || _hostSettings is null)
+            return;
+        _hostSettings.RecentFontsEnabled = _recentFontsEnabled.IsChecked == true;
     }
 
     public void LoadDefaults() => _vm.LoadDefaults();

@@ -23,6 +23,56 @@ public sealed partial class MainPage
     [DevFlowAction("roma.probe.state", Description = "PROBE: assembly tree + document snapshot as JSON.")]
     public static string ProbeState() => RunOnUi(page => Snapshot(page));
 
+    // Exercises the real GitHub release update check (lextudio/project-roma) and reports the
+    // latest version + download URL + current app version + whether an update is available.
+    [DevFlowAction("roma.probe.check-update", Description = "PROBE: query project-roma GitHub releases; returns version comparison JSON.")]
+    public static string ProbeCheckUpdate()
+    {
+        var sb = new System.Text.StringBuilder();
+        sb.Append('{');
+        var current = ICSharpCode.ILSpy.Updates.AppUpdateService.CurrentVersion;
+        sb.Append($"\"current\":{Json(current.ToString())},");
+        try
+        {
+            var info = ICSharpCode.ILSpy.Updates.UpdateService.GetLatestVersionAsync().GetAwaiter().GetResult();
+            sb.Append($"\"latest\":{Json(info.Version?.ToString())},");
+            sb.Append($"\"downloadUrl\":{Json(info.DownloadUrl)},");
+            sb.Append($"\"updateAvailable\":{(info.Version > current ? "true" : "false")}");
+        }
+        catch (Exception ex)
+        {
+            sb.Append($"\"error\":{Json(ex.Message)}");
+        }
+        sb.Append('}');
+        return sb.ToString();
+    }
+
+    // Verifies the Roma host settings (terminal preference) round-trip and the RecentFontsCache.
+    [DevFlowAction("roma.probe.host-settings", Description = "PROBE: round-trip RomaHostSettings terminal pref + RecentFontsCache.")]
+    public static string ProbeHostSettings() => RunOnUi(page =>
+    {
+        var settings = page._assemblyContext.SettingsService.GetSettings<RomaHostSettings>();
+
+        // Round-trip the terminal preference.
+        var original = settings.PreferredTerminalApp;
+        settings.PreferredTerminalApp = "iTerm2";
+        var readBack = settings.PreferredTerminalApp;
+        settings.PreferredTerminalApp = original;
+
+        // RecentFontsCache round-trip.
+        var updated = RecentFontsCache.Update("RomaProbeFont");
+        var top = updated.Count > 0 ? updated[0] : null;
+
+        var sb = new System.Text.StringBuilder();
+        sb.Append('{');
+        sb.Append($"\"terminalRoundTrip\":{(readBack == "iTerm2" ? "true" : "false")},");
+        sb.Append($"\"recentFontsEnabled\":{(settings.RecentFontsEnabled ? "true" : "false")},");
+        sb.Append($"\"recentFontTop\":{Json(top)},");
+        sb.Append($"\"recentFontCachesIt\":{(top == "RomaProbeFont" ? "true" : "false")}");
+        sb.Append('}');
+        return sb.ToString();
+    });
+
     // Opens an assembly by file path (File → Open equivalent) and returns the resulting state.
     [DevFlowAction("roma.probe.open", Description = "PROBE: open an assembly by path; returns state JSON.")]
     public static string ProbeOpen(string path) => RunOnUi(page =>
