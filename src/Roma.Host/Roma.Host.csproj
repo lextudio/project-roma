@@ -227,7 +227,8 @@
     <Compile Include="..\..\ext\ilspy\ILSpy\GuessFileType.cs" Link="ILSpy\GuessFileType.cs" />
     <!-- MessageBus: real generic bus + event-arg wrappers (WeakEventSource from TomsToolbox) -->
     <Compile Include="..\..\ext\ilspy\ILSpy\Util\MessageBus.cs" Link="ILSpy\Util\MessageBus.cs" />
-    <Compile Include="..\..\ext\ilspy\ILSpy\Util\GlobalUtils.wpf.cs" Link="ILSpy\Util\GlobalUtils.wpf.cs" />
+    <!-- GlobalUtils.OpenTerminalAt is Roma-specific (cross-platform + terminal preference); it lives
+         in src/Roma.Host/Util/GlobalUtilsTerminal.cs instead of modifying the ILSpy submodule. -->
     <Compile Include="..\..\ext\ilspy\ILSpy\EntityReference.cs" Link="ILSpy\EntityReference.cs" />
     <!-- ViewModels: PaneModel chain (WPF path, no CROSS_PLATFORM) -->
     <Compile Include="..\..\ext\ilspy\ILSpy\ViewModels\PaneModel.cs" Link="ILSpy\ViewModels\PaneModel.cs" />
@@ -244,11 +245,10 @@
     <Compile Include="..\..\ext\ilspy\ILSpy\Commands\ExportCommandAttribute.cs" Link="ILSpy\Commands\ExportCommandAttribute.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\Commands\IProtocolHandler.cs" Link="ILSpy\Commands\IProtocolHandler.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\Updates\UpdateSettings.cs" Link="ILSpy\Updates\UpdateSettings.cs" />
-    <!-- Pure (non-WPF) update infrastructure ported as-is; the UI surfaces (About page, update
-         banner) are Roma-native. -->
-    <Compile Include="..\..\ext\ilspy\ILSpy\Updates\AppUpdateService.cs" Link="ILSpy\Updates\AppUpdateService.cs" />
+    <!-- AvailableVersionInfo is a plain data type (kept as-is). AppUpdateService + UpdateService are
+         Roma-specific (check project-roma GitHub releases against Roma's own version); they live in
+         src/Roma.Host/Updates/ instead of modifying the ILSpy submodule (mirrors ProjectRover). -->
     <Compile Include="..\..\ext\ilspy\ILSpy\Updates\AvailableVersionInfo.cs" Link="ILSpy\Updates\AvailableVersionInfo.cs" />
-    <Compile Include="..\..\ext\ilspy\ILSpy\Updates\UpdateService.cs" Link="ILSpy\Updates\UpdateService.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\NavigationHistory.cs" Link="ILSpy\NavigationHistory.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\NavigationState.cs" Link="ILSpy\NavigationState.cs" />
     <Compile Include="..\..\ext\ilspy\ILSpy\Docking\DockWorkspace.cs" Link="ILSpy\Docking\DockWorkspace.cs" />
