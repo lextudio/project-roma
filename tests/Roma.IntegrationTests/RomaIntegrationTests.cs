@@ -11,7 +11,8 @@ namespace Roma.IntegrationTests;
 public sealed class RomaIntegrationTests
 {
     // A real .NET assembly that's always present to use as test input.
-    const string SampleAssembly = @"C:\Program Files\dotnet\shared\Microsoft.NETCore.App\9.0.4\System.Net.Http.dll";
+    static readonly string SampleAssembly = typeof(System.Net.Http.HttpClient).Assembly.Location;
+    static readonly string SecondSampleAssembly = typeof(System.Linq.Enumerable).Assembly.Location;
 
     readonly RomaAppFixture _app;
     public RomaIntegrationTests(RomaAppFixture app) => _app = app;
@@ -50,8 +51,7 @@ public sealed class RomaIntegrationTests
         // Two distinct top-level assemblies so there is a "next" to fall to.
         await _app.InvokeAsync("roma.probe.clear");
         await _app.InvokeAsync("roma.probe.open", SampleAssembly);
-        var seeded = await _app.InvokeAsync("roma.probe.open",
-            @"C:\Program Files\dotnet\shared\Microsoft.NETCore.App\9.0.4\System.Linq.dll");
+        var seeded = await _app.InvokeAsync("roma.probe.open", SecondSampleAssembly);
         Assert.True(Rows(seeded) >= 2, $"need >=2 rows to test next-selection, got {Rows(seeded)}");
 
         await _app.InvokeAsync("roma.probe.select-row", 0);

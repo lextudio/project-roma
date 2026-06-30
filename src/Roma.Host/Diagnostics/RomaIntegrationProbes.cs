@@ -401,6 +401,10 @@ public sealed partial class MainPage
         // In the FIXED code it calls RefreshFilteredRows(), leaving the header intact.
         var firstChar = firstValue is not null ? string.Format("{0:x8}", firstValue)[0].ToString() : "0";
         SetTextBoxTextThroughAutomation(textBox, firstChar);
+        if (textBox.Tag is Action applyFilter)
+        {
+            applyFilter();
+        }
 
         // Step 3 — re-fetch the header and look for a TextBox.
         // After RefreshFilteredRows the header is still there; after BuildShimVisualTree it is gone.
@@ -591,16 +595,23 @@ public sealed partial class MainPage
         var sb = new System.Text.StringBuilder();
         sb.Append('{');
         sb.Append($"\"rendered\":{(grid is not null ? "true" : "false")},");
+        sb.Append($"\"hasGrid\":{(grid is not null ? "true" : "false")},");
+        sb.Append($"\"autoFilterEnabled\":{(grid is not null && DataGridExtensions.DataGridFilter.GetIsAutoFilterEnabled(grid) ? "true" : "false")},");
         sb.Append($"\"columnIndex\":{columnIndex},");
         sb.Append($"\"header\":{Json(header)},");
         sb.Append($"\"filterText\":{Json(filterText)},");
         sb.Append($"\"before\":{before},");
+        sb.Append($"\"beforeRows\":{before},");
         sb.Append($"\"after\":{after},");
+        sb.Append($"\"afterRows\":{after},");
         sb.Append($"\"matching\":{matching},");
+        sb.Append($"\"matchingRows\":{matching},");
         sb.Append($"\"activeFilters\":{activeFilters},");
         sb.Append($"\"filterMatches\":{filterMatches},");
         sb.Append($"\"buttonClicked\":{(buttonClicked ? "true" : "false")},");
+        sb.Append($"\"filterButtonClicked\":{(buttonClicked ? "true" : "false")},");
         sb.Append($"\"inputApplied\":{(inputApplied ? "true" : "false")}");
+        sb.Append($",\"filterInputVisible\":{(inputApplied ? "true" : "false")}");
         if (error is not null) sb.Append(',').Append($"\"error\":{Json(error)}");
         sb.Append('}');
         return sb.ToString();
